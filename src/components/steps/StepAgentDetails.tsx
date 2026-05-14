@@ -23,20 +23,20 @@ export default function StepAgentDetails() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-950">פרטי הסוכן</h1>
         </div>
         <p className="text-slate-500 text-sm leading-relaxed mt-2 max-w-lg">
-          הגדר את שם הסוכן ואת התפקיד המרכזי שלו לפני שמתחילים לפרט תרחישי שימוש.
+        הגדירו את זהות הסוכן והמטרה המרכזית שלו, כדי שנוכל להתאים את האפיון לצורך העסקי.
         </p>
       </div>
 
       <div className="rounded-[2rem] bg-white/80 border border-white/70 shadow-xl shadow-indigo-950/[0.04] px-6 py-6 space-y-5">
         <div>
-          <Label htmlFor="agent-name" required>שם הסוכן המבוקש</Label>
+          <Label htmlFor="agent-name" required>שם הסוכן</Label>
           <Input
             id="agent-name"
             value={agentDetails.requestedAgentName}
             onChange={(event) =>
               updateAgentDetails({ requestedAgentName: event.target.value })
             }
-            placeholder='לדוגמה: "סוכן בדיקת סטטוס הזמנות"'
+            placeholder='לדוגמה: סוכן רכש ארגוני'
           />
         </div>
 
@@ -57,7 +57,7 @@ export default function StepAgentDetails() {
       <div className="flex justify-between items-center pt-4 border-t border-white/70">
         <div />
         <Button onClick={nextStep} size="lg" disabled={!canContinue} className="gap-2">
-          המשך לתרחישי שימוש
+          המשך להגדרת תרחישי שימוש
           <ChevronLeft size={17} />
         </Button>
       </div>

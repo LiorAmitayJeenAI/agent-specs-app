@@ -88,7 +88,7 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-800">
-              {useCase.useCaseName || useCase.title || `תרחיש שימוש ${index + 1}`}
+              {useCase.useCaseName || useCase.title || `תרחיש שימוש #${index + 1}`}
             </p>
             {useCase.isCollapsed && useCase.userQuestion && (
               <p className="text-xs text-slate-400 mt-0.5 max-w-xs truncate">
@@ -142,8 +142,9 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
           <section className="rounded-2xl bg-gradient-to-l from-indigo-50/80 to-white border border-indigo-100 px-4 pt-4 pb-5 shadow-sm">
             <SectionHeader
               number="①"
-              title="מה המשתמש צריך לדעת?"
-              subtitle="שאלה אמיתית והתשובה שהסוכן צריך להחזיר"
+              title="השאלות האפשריות והתשובות המצופות"
+              subtitle="הגדירו אילו שאלות משתמשים עשויים לשאול במסגרת תרחיש זה, ומהי התשובה שהסוכן צריך לספק.
+"
               accentClass="border-indigo-100 text-indigo-800"
             />
 
@@ -152,7 +153,7 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
                 <Label htmlFor={`question-${useCase.id}`} required>
                   <span className="flex items-center gap-1.5">
                     <MessageSquare size={13} className="text-indigo-500" />
-                    איך המשתמש ישאל את הסוכן?
+                    שאלות משתמש אפשריות
                     <HelpTooltip text="כתוב כמו שהמשתמש היה שואל באמת." />
                   </span>
                 </Label>
@@ -169,14 +170,14 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
               <div>
                 <Label htmlFor={`answer-${useCase.id}`} required>
                   <span className="inline-flex items-center gap-1.5">
-                    מה הסוכן צריך לענות?
+                  תשובות הסוכן המצופות בהתאמה לשאלות
                     <HelpTooltip text="מספיק לתאר את המידע החשוב שהמשתמש צריך לקבל." />
                   </span>
                 </Label>
                 <Textarea
                   id={`answer-${useCase.id}`}
                   rows={3}
-                  placeholder='לדוגמה: "סטטוס ההזמנה, תאריך אספקה צפוי והשלב הבא"'
+                  placeholder='לדוגמה: "ההזמנה אושרה ומועד האספקה הצפוי הוא 12.6.2026"'
                   value={useCase.expectedAnswer}
                   onChange={(e) => update({ expectedAnswer: e.target.value })}
                   className="bg-white"
@@ -189,8 +190,8 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
           <section className="rounded-2xl bg-white border border-slate-200/80 px-4 pt-4 pb-5 shadow-sm">
             <SectionHeader
               number="②"
-              title="רקע קצר"
-              subtitle="מי עושה את זה היום ובאילו מערכות"
+              title="התהליך הקיים כיום"
+              subtitle="כיצד התהליך מתבצע כיום לפני האוטומציה (ידנית)"
               accentClass="border-slate-200 text-slate-700"
             />
 
@@ -223,7 +224,7 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
                 <TagInput
                   value={useCase.systemsInvolved}
                   onChange={(tags) => update({ systemsInvolved: tags })}
-                  placeholder="הקלד שם מערכת ולחץ Enter..."
+                  placeholder="לדוגמה: SAP, Salesforce, Excel"
                   suggestions={COMMON_SYSTEMS}
                 />
               </div>
