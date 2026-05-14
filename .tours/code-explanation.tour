@@ -1,0 +1,10 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "code explanation",
+  "steps": [
+    {
+      "title": "Introduction",
+      "description": "can you explain me the arcitecture  in the files?\n"
+    }
+  ]
+}

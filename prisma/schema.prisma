@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Client {
+  client_id   String    @id @default(uuid())
+  client_name String
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  projects    Project[]
+}
+
+model Project {
+  project_id              String                @id @default(uuid())
+  client_id               String
+  project_name            String
+  document_author_name    String
+  requested_agent_name    String
+  short_agent_description String
+  created_at              DateTime              @default(now())
+  updated_at              DateTime              @updatedAt
+  client                  Client                @relation(fields: [client_id], references: [client_id])
+  use_cases               UseCase[]
+  data_sources            DataSource[]
+  glossary                GlossaryTerm[]
+  success_metrics         SuccessMetric[]
+  requirement_documents   RequirementDocument[]
+}
+
+model UseCase {
+  use_case_id     String          @id @default(uuid())
+  project_id      String
+  use_case_name   String
+  title           String?
+  user_question   String
+  expected_answer String?
+  performed_by    String?
+  current_systems String[]
+  notes           String?
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  project         Project         @relation(fields: [project_id], references: [project_id])
+  flow_steps      FlowStep[]
+  success_metrics SuccessMetric[]
+}
+
+model FlowStep {
+  step_id             String  @id @default(uuid())
+  use_case_id         String
+  step_number         Int
+  step_description    String
+  has_calculation     Boolean @default(false)
+  calculation_details String?
+  notes               String?
+  use_case            UseCase @relation(fields: [use_case_id], references: [use_case_id])
+}
+
+model File {
+  file_id             String   @id @default(uuid())
+  related_entity_type String
+  related_entity_id   String
+  file_name           String
+  file_type           String?
+  blob_url            String
+  size                Int?
+  step_id             String?
+  field_name          String?
+  uploaded_at         DateTime @default(now())
+}
+
+model DataSource {
+  data_source_id String  @id @default(uuid())
+  project_id     String
+  source_name    String
+  source_type    String?
+  description    String?
+  access_method  String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  project        Project @relation(fields: [project_id], references: [project_id])
+}
+
+model GlossaryTerm {
+  term_id    String   @id @default(uuid())
+  project_id String
+  term       String
+  definition String?
+  examples   String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  project    Project  @relation(fields: [project_id], references: [project_id])
+}
+
+model SuccessMetric {
+  success_metric_id  String   @id @default(uuid())
+  project_id         String
+  use_case_id        String?
+  metric_name        String
+  target             String?
+  measurement_method String?
+  priority           String   @default("medium")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  project            Project  @relation(fields: [project_id], references: [project_id])
+  use_case           UseCase? @relation(fields: [use_case_id], references: [use_case_id])
+}
+
+model RequirementDocument {
+  requirement_document_id String   @id @default(uuid())
+  project_id              String
+  title                   String
+  content_json            Json
+  version                 Int      @default(1)
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+  project                 Project  @relation(fields: [project_id], references: [project_id])
+}
