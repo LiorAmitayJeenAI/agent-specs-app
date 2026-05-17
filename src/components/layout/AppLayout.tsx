@@ -9,6 +9,7 @@ import Step3Concepts from "@/components/steps/Step3Concepts";
 import Step4Metrics from "@/components/steps/Step4Metrics";
 import Step5Summary from "@/components/steps/Step5Summary";
 import { useFormStore } from "@/store/formStore";
+import { LOCKED_FORM_STEP_IDS } from "@/lib/utils";
 
 const STEP_COMPONENTS: Record<number, React.ComponentType> = {
   1: StepAgentDetails,
@@ -22,6 +23,7 @@ const STEP_COMPONENTS: Record<number, React.ComponentType> = {
 export default function AppLayout() {
   const { currentStep, isLoginComplete } = useFormStore();
   const StepComponent = STEP_COMPONENTS[currentStep] ?? StepAgentDetails;
+  const isCurrentStepLocked = LOCKED_FORM_STEP_IDS.includes(currentStep);
 
   if (!isLoginComplete) {
     return <LoginPage />;
@@ -40,7 +42,18 @@ export default function AppLayout() {
           className="fixed -top-4 left-4 h-[8.5rem] w-auto z-10"
         />
         <div className="max-w-4xl mx-auto px-6 py-10 lg:py-12">
-          <StepComponent />
+          {isCurrentStepLocked ? (
+            <div className="rounded-[2rem] border border-slate-200 bg-white/80 px-6 py-8 text-center shadow-xl shadow-indigo-950/[0.04]">
+              <h1 className="text-2xl font-bold text-slate-900">
+                שלב זה יבוצע יחד עם מנהל הפרויקט
+              </h1>
+              <p className="mt-2 text-sm text-slate-500">
+                אפשר להמשיך לעבוד על שאר שלבי האפיון דרך הבר הצדדי.
+              </p>
+            </div>
+          ) : (
+            <StepComponent />
+          )}
         </div>
       </main>
     </div>

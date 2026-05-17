@@ -37,15 +37,27 @@ export interface FlowStep {
   isCollapsed: boolean;
 }
 
+// ─── QA Pairs ───────────────────────────────────────────────────────────────────
+
+export interface QAPair {
+  id: string;
+  order: number;
+  question: string;
+  expectedAnswer: string;
+  /** Free-text description of the data source for this answer */
+  dataSourceRef: string;
+  /** Optional FK to an existing DataSource entity */
+  dataSourceId?: string;
+}
+
 // ─── Use Cases ─────────────────────────────────────────────────────────────────
 
 export interface UseCase {
   id: string;
   useCaseName: string;
-  /** Short display title (auto-generated from question) */
+  /** Short display title (auto-generated from first question) */
   title: string;
-  userQuestion: string;
-  expectedAnswer: string;
+  qaPairs: QAPair[];
   performer: string;
   systemsInvolved: string[];
   additionalNotes: string;
@@ -98,6 +110,8 @@ export interface StepConfig {
 export interface ProjectIntake {
   clientName: string;
   documentAuthorName: string;
+  department: string;
+  position: string;
 }
 
 export interface AgentDetails {

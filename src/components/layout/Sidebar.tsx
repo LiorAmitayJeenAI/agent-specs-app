@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { CheckCircle, Dot, RotateCcw } from "lucide-react";
 import { useFormStore } from "@/store/formStore";
-import { STEP_CONFIGS } from "@/lib/utils";
+import { LOCKED_FORM_STEP_IDS, STEP_CONFIGS } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -16,19 +15,63 @@ const STEP_BADGES = [
   { bg: "#EEE9FF", text: "#5B4FE8" },
 ];
 
+const hasText = (value: string) => value.trim().length > 0;
+const lockedStepIds = new Set(LOCKED_FORM_STEP_IDS);
+
 export default function Sidebar() {
-  const { currentStep, maxAccessibleStep, goToStep, resetForm } = useFormStore();
-  const [lockedMessageStep, setLockedMessageStep] = useState<number | null>(null);
+  const {
+    currentStep,
+    agentDetails,
+    useCases,
+    dataSources,
+    concepts,
+    successMetrics,
+    goToStep,
+    resetForm,
+  } = useFormStore();
   const totalSteps = STEP_CONFIGS.length;
 
   const handleStepClick = (stepId: number) => {
-    if (stepId > maxAccessibleStep) {
-      setLockedMessageStep(stepId);
-      window.setTimeout(() => setLockedMessageStep(null), 1800);
-      return;
-    }
-
+    if (lockedStepIds.has(stepId)) return;
     goToStep(stepId);
+  };
+
+  const isStepComplete = (stepId: number) => {
+    switch (stepId) {
+      case 1:
+        return (
+          hasText(agentDetails.requestedAgentName) &&
+          hasText(agentDetails.shortAgentDescription)
+        );
+      case 2:
+        return (
+          useCases.length > 0 &&
+          useCases.every(
+            (useCase) =>
+              hasText(useCase.useCaseName) &&
+              useCase.flowSteps.length > 0 &&
+              useCase.flowSteps.every((step) => hasText(step.description))
+          )
+        );
+      case 3:
+        return (
+          dataSources.length > 0 &&
+          dataSources.every(
+            (source) =>
+              hasText(source.name) &&
+              hasText(source.type) &&
+              (source.type !== "אחר" || hasText(source.description))
+          )
+        );
+      case 4:
+        return concepts.length > 0 && concepts.every((concept) => hasText(concept.term));
+      case 5:
+        return successMetrics.length > 0 && successMetrics.every((metric) => hasText(metric.metric));
+      case 6:
+        return [1, 2, 3, 4, 5].every(isStepComplete);
+      default:
+        return false;
+    }
   };
 
   const handleReset = () => {
@@ -63,8 +106,8 @@ export default function Sidebar() {
         <ul className="space-y-0.5">
           {STEP_CONFIGS.map((step, index) => {
             const isActive = currentStep === step.id;
-            const isLocked = step.id > maxAccessibleStep;
-            const isCompleted = step.id < maxAccessibleStep && !isActive;
+            const isLocked = lockedStepIds.has(step.id);
+            const isCompleted = !isLocked && isStepComplete(step.id);
             const badge = STEP_BADGES[index] ?? STEP_BADGES[STEP_BADGES.length - 1];
 
             return (
@@ -72,12 +115,12 @@ export default function Sidebar() {
                 <button
                   onClick={() => handleStepClick(step.id)}
                   aria-disabled={isLocked}
-                  title={isLocked ? "יש להשלים את השלב הנוכחי תחילה" : undefined}
+                  title={isLocked ? "שלב זה יבוצע יחד עם מנהל הפרויקט" : undefined}
                   className={cn(
                     "w-full text-right flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-150 cursor-pointer",
                     isActive && "bg-[#EEE9FF] ring-1 ring-[#C4B8FF]/50",
                     !isActive && !isLocked && "hover:bg-[#F8F8FC]",
-                    isLocked && "opacity-40 cursor-not-allowed"
+                    isLocked && "cursor-not-allowed opacity-45"
                   )}
                 >
                   {/* Step indicator */}
@@ -112,7 +155,8 @@ export default function Sidebar() {
                         "text-sm font-medium leading-tight",
                         isActive && "text-[#5B4FE8]",
                         isCompleted && "text-[#1A1A2E]",
-                        isLocked && "text-[#6B6B8A]"
+                        isLocked && "text-[#6B6B8A]",
+                        !isActive && !isCompleted && "text-[#6B6B8A]"
                       )}
                     >
                       {step.title}
@@ -125,6 +169,11 @@ export default function Sidebar() {
                     >
                       {step.subtitle}
                     </p>
+                    {isLocked && (
+                      <p className="mt-0.5 text-[11px] leading-snug text-[#AAAACC]">
+                        שלב זה יבוצע יחד עם מנהל הפרויקט
+                      </p>
+                    )}
                   </div>
 
                   {/* Active indicator */}
@@ -132,12 +181,6 @@ export default function Sidebar() {
                     <Dot size={20} className="text-[#5B4FE8] shrink-0" />
                   )}
                 </button>
-
-                {lockedMessageStep === step.id && (
-                  <div className="absolute left-3 top-full z-20 mt-1 rounded-xl border border-[#EEEEEE] bg-white px-3 py-2 text-xs text-[#6B6B8A] shadow-[0_4px_14px_rgba(0,0,0,0.08)]">
-                    יש להשלים את השלב הנוכחי תחילה
-                  </div>
-                )}
 
                 {/* Connector line between steps */}
                 {index < STEP_CONFIGS.length - 1 && (

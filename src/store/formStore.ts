@@ -3,8 +3,10 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { v4 as uuid } from "uuid";
+import { LOCKED_FORM_STEP_IDS } from "@/lib/utils";
 import type {
   UseCase,
+  QAPair,
   FlowStep,
   FileAttachment,
   DataSource,
@@ -16,14 +18,33 @@ import type {
   UploadedFileRef,
 } from "@/types";
 
+const lockedStepIds = new Set(LOCKED_FORM_STEP_IDS);
+
+const getNextUnlockedStep = (step: number, direction: 1 | -1) => {
+  let next = Math.min(Math.max(step + direction, 1), 6);
+
+  while (lockedStepIds.has(next) && next > 1 && next < 6) {
+    next += direction;
+  }
+
+  return Math.min(Math.max(next, 1), 6);
+};
+
 // ─── Factories ─────────────────────────────────────────────────────────────────
+
+const newQAPair = (order: number): QAPair => ({
+  id: uuid(),
+  order,
+  question: "",
+  expectedAnswer: "",
+  dataSourceRef: "",
+});
 
 const newUseCase = (): UseCase => ({
   id: uuid(),
   useCaseName: "",
   title: "",
-  userQuestion: "",
-  expectedAnswer: "",
+  qaPairs: [newQAPair(1)],
   performer: "",
   systemsInvolved: [],
   additionalNotes: "",
@@ -93,6 +114,11 @@ interface FormStore {
   removeUseCase: (id: string) => void;
   toggleUseCaseCollapse: (id: string) => void;
 
+  // QA Pairs
+  addQAPair: (useCaseId: string) => void;
+  updateQAPair: (useCaseId: string, qaPairId: string, patch: Partial<QAPair>) => void;
+  removeQAPair: (useCaseId: string, qaPairId: string) => void;
+
   // Flow Steps
   addFlowStep: (useCaseId: string) => void;
   updateFlowStep: (useCaseId: string, stepId: string, patch: Partial<FlowStep>) => void;
@@ -136,6 +162,8 @@ const initialFormState = {
   projectIntake: {
     clientName: "",
     documentAuthorName: "",
+    department: "",
+    position: "",
   },
   agentDetails: {
     requestedAgentName: "",
@@ -159,17 +187,19 @@ export const useFormStore = create<FormStore>()(
     set((s) => ({ projectIntake: { ...s.projectIntake, ...patch } })),
   updateAgentDetails: (patch) =>
     set((s) => ({ agentDetails: { ...s.agentDetails, ...patch } })),
-  goToStep: (step) =>
-    set((s) => ({ currentStep: Math.min(step, s.maxAccessibleStep) })),
+  goToStep: (step) => {
+    if (lockedStepIds.has(step)) return;
+    set({ currentStep: Math.min(Math.max(step, 1), 6) });
+  },
   nextStep: () =>
     set((s) => {
-      const next = Math.min(s.currentStep + 1, 6);
+      const next = getNextUnlockedStep(s.currentStep, 1);
       return {
         currentStep: next,
         maxAccessibleStep: Math.max(s.maxAccessibleStep, next),
       };
     }),
-  prevStep: () => set((s) => ({ currentStep: Math.max(s.currentStep - 1, 1) })),
+  prevStep: () => set((s) => ({ currentStep: getNextUnlockedStep(s.currentStep, -1) })),
   resetForm: () => set(initialFormState),
 
   // ── Use Cases ────────────────────────────────────────────────────────────────
@@ -190,6 +220,44 @@ export const useFormStore = create<FormStore>()(
       useCases: s.useCases.map((uc) =>
         uc.id === id ? { ...uc, isCollapsed: !uc.isCollapsed } : uc
       ),
+    })),
+
+  // ── QA Pairs ────────────────────────────────────────────────────────────────
+
+  addQAPair: (useCaseId) =>
+    set((s) => ({
+      useCases: s.useCases.map((uc) => {
+        if (uc.id !== useCaseId) return uc;
+        return {
+          ...uc,
+          qaPairs: [...uc.qaPairs, newQAPair(uc.qaPairs.length + 1)],
+        };
+      }),
+    })),
+
+  updateQAPair: (useCaseId, qaPairId, patch) =>
+    set((s) => ({
+      useCases: s.useCases.map((uc) => {
+        if (uc.id !== useCaseId) return uc;
+        return {
+          ...uc,
+          qaPairs: uc.qaPairs.map((pair) =>
+            pair.id === qaPairId ? { ...pair, ...patch } : pair
+          ),
+        };
+      }),
+    })),
+
+  removeQAPair: (useCaseId, qaPairId) =>
+    set((s) => ({
+      useCases: s.useCases.map((uc) => {
+        if (uc.id !== useCaseId) return uc;
+        const filtered = uc.qaPairs.filter((pair) => pair.id !== qaPairId);
+        return {
+          ...uc,
+          qaPairs: filtered.map((pair, i) => ({ ...pair, order: i + 1 })),
+        };
+      }),
     })),
 
   // ── Flow Steps ───────────────────────────────────────────────────────────────
@@ -427,7 +495,7 @@ export const useFormStore = create<FormStore>()(
     }),
     {
       name: "agent-specs-form-draft",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         isLoginComplete: state.isLoginComplete,
@@ -440,6 +508,25 @@ export const useFormStore = create<FormStore>()(
         concepts: state.concepts,
         successMetrics: state.successMetrics,
       }),
+      migrate: (persisted: unknown, version: number) => {
+        const state = persisted as Record<string, unknown>;
+        if (version < 2) {
+          const useCases = (state.useCases as Array<Record<string, unknown>>) ?? [];
+          state.useCases = useCases.map((uc) => {
+            if (!uc.qaPairs) {
+              const question = (uc.userQuestion as string) || "";
+              const answer = (uc.expectedAnswer as string) || "";
+              uc.qaPairs = question || answer
+                ? [{ id: uuid(), order: 1, question, expectedAnswer: answer, dataSourceRef: "" }]
+                : [{ id: uuid(), order: 1, question: "", expectedAnswer: "", dataSourceRef: "" }];
+              delete uc.userQuestion;
+              delete uc.expectedAnswer;
+            }
+            return uc;
+          });
+        }
+        return state as unknown as FormStore;
+      },
     }
   )
 );

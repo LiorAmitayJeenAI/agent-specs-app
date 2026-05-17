@@ -159,6 +159,7 @@ export default function Step5Summary() {
     updateProjectIntake,
     updateAgentDetails,
     updateUseCase,
+    updateQAPair,
     updateFlowStep,
     updateDataSource,
     updateConcept,
@@ -223,15 +224,29 @@ export default function Step5Summary() {
           ...editableTextBlocks("שם תרחיש השימוש", uc.useCaseName, (useCaseName) =>
             updateUseCase(uc.id, { useCaseName })
           ),
-          ...editableTextBlocks("שאלה", uc.userQuestion, (userQuestion) =>
-            updateUseCase(uc.id, {
-              userQuestion,
-              title: userQuestion.slice(0, 50) || `תרחיש ${ucIndex + 1}`,
-            })
-          ),
-          ...editableTextBlocks("תשובה רצויה", uc.expectedAnswer, (expectedAnswer) =>
-            updateUseCase(uc.id, { expectedAnswer })
-          ),
+          ...(uc.qaPairs ?? []).flatMap((pair, pairIndex): DocumentBlock[] => [
+            { kind: "label", text: `שאלה ${pairIndex + 1}` },
+            {
+              kind: "editableText",
+              value: pair.question,
+              onChange: (question) =>
+                updateQAPair(uc.id, pair.id, { question }),
+            },
+            { kind: "label", text: `תשובה ${pairIndex + 1}` },
+            {
+              kind: "editableText",
+              value: pair.expectedAnswer,
+              onChange: (expectedAnswer) =>
+                updateQAPair(uc.id, pair.id, { expectedAnswer }),
+            },
+            { kind: "label", text: `מקור מידע ${pairIndex + 1}` },
+            {
+              kind: "editableText",
+              value: pair.dataSourceRef,
+              onChange: (dataSourceRef) =>
+                updateQAPair(uc.id, pair.id, { dataSourceRef }),
+            },
+          ]),
           ...editableTextBlocks("מבצע התהליך כיום", uc.performer, (performer) =>
             updateUseCase(uc.id, { performer })
           ),

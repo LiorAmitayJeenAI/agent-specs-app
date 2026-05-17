@@ -9,6 +9,12 @@ import UseCaseCard from "@/components/use-case/UseCaseCard";
 export default function Step1UseCases() {
   const { useCases, addUseCase, nextStep } = useFormStore();
   const [tipDismissed, setTipDismissed] = useState(false);
+  const hasMissingRequiredFlow = useCases.some(
+    (useCase) =>
+      useCase.flowSteps.length === 0 ||
+      useCase.flowSteps.some((step) => !step.description.trim())
+  );
+  const canContinue = useCases.length > 0 && !hasMissingRequiredFlow;
 
   return (
     <div className="space-y-7 animate-fade-in">
@@ -97,13 +103,18 @@ export default function Step1UseCases() {
         <Button
           onClick={nextStep}
           size="lg"
-          disabled={useCases.length === 0}
+          disabled={!canContinue}
           className="gap-2"
         >
           המשך לשלב הבא
           <ChevronLeft size={17} />
         </Button>
       </div>
+      {hasMissingRequiredFlow && (
+        <p className="text-left text-xs text-red-500">
+          יש למלא פירוט התהליך הקיים (Flow) בכל תרחיש שימוש כדי להמשיך.
+        </p>
+      )}
     </div>
   );
 }

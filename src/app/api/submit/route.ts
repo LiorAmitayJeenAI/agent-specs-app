@@ -43,6 +43,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (
+      body.useCases.some(
+        (useCase) =>
+          useCase.flowSteps.length === 0 ||
+          useCase.flowSteps.some((step) => !hasText(step.description))
+      )
+    ) {
+      return NextResponse.json(
+        { error: "יש למלא פירוט התהליך הקיים (Flow) בכל תרחיש שימוש" },
+        { status: 400 }
+      );
+    }
+
     const existingClient = await prisma.client.findFirst({
       where: { client_name: body.projectIntake.clientName },
       select: { client_id: true },
@@ -62,6 +75,8 @@ export async function POST(request: NextRequest) {
         client_id: client.client_id,
         project_name: body.agentDetails.requestedAgentName,
         document_author_name: body.projectIntake.documentAuthorName,
+        author_department: body.projectIntake.department || null,
+        author_position: body.projectIntake.position || null,
         requested_agent_name: body.agentDetails.requestedAgentName,
         short_agent_description: body.agentDetails.shortAgentDescription,
         use_cases: {
@@ -71,11 +86,22 @@ export async function POST(request: NextRequest) {
               useCase.title.trim() ||
               `תרחיש שימוש ${index + 1}`,
             title: useCase.title || null,
-            user_question: useCase.userQuestion,
-            expected_answer: useCase.expectedAnswer || null,
+            user_question: useCase.qaPairs?.[0]?.question || null,
+            expected_answer: useCase.qaPairs?.[0]?.expectedAnswer || null,
             performed_by: useCase.performer || null,
             current_systems: useCase.systemsInvolved,
             notes: useCase.additionalNotes || null,
+            qa_pairs: {
+              create: (useCase.qaPairs ?? [])
+                .filter((pair) => pair.question.trim() || pair.expectedAnswer.trim())
+                .map((pair, i) => ({
+                  order: i + 1,
+                  question: pair.question,
+                  expected_answer: pair.expectedAnswer,
+                  data_source_ref: pair.dataSourceRef || null,
+                  data_source_id: pair.dataSourceId || null,
+                })),
+            },
             flow_steps: {
               create: useCase.flowSteps.map((step) => ({
                 step_number: step.order,

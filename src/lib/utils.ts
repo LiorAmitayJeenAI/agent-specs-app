@@ -28,3 +28,5 @@ export const STEP_CONFIGS = [
   { id: 5, title: "מדדי הצלחה", subtitle: "כיצד נמדוד את הצלחת הסוכן" },
   { id: 6, title: "סיכום ושליחה", subtitle: "בדיקה ואישור סופי" },
 ];
+
+export const LOCKED_FORM_STEP_IDS = [4, 5];

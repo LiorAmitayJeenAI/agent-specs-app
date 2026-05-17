@@ -15,6 +15,8 @@ export default function FlowSteps({ useCaseId }: FlowStepsProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const useCase = useCases.find((uc) => uc.id === useCaseId);
   const steps = useCase?.flowSteps ?? [];
+  const isMissingRequiredFlow =
+    steps.length === 0 || steps.some((step) => !step.description.trim());
 
   const handleDrop = (targetIndex: number) => {
     if (draggingIndex === null || draggingIndex === targetIndex) {
@@ -32,10 +34,16 @@ export default function FlowSteps({ useCaseId }: FlowStepsProps) {
         <div className="text-right">
           <h3 className="text-2xl font-bold text-[#1A1A2E]">
             3.  פירוט התהליך הקיים (Flow)
+            <span className="mr-1 text-red-500">*</span>
           </h3>
           <p className="mt-1 text-sm text-[#4A4A6A]">
             פרט את השלבים שהמשתמש מבצע כיום, לפי הסדר, כולל מסכים וחישובים רלוונטיים.
           </p>
+          {isMissingRequiredFlow && (
+            <p className="mt-1 text-xs text-red-500">
+              יש להוסיף לפחות שלב אחד ולמלא תיאור לכל שלב.
+            </p>
+          )}
         </div>
       </div>
 

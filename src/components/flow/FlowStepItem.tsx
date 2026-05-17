@@ -66,7 +66,7 @@ export default function FlowStepItem({
         <div className="grid gap-5 lg:grid-cols-2">
           <section className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4">
             <div className="mb-4">
-              <Label htmlFor={`step-desc-${step.id}`} className="text-center">
+              <Label htmlFor={`step-desc-${step.id}`} className="inline-flex w-full justify-center" required>
                 תיאור השלב
               </Label>
               <Textarea

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronDown, ChevronUp, Trash2, User, Layers, MessageSquare } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, User, Layers } from "lucide-react";
 import { useFormStore } from "@/store/formStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import HelpTooltip from "@/components/shared/HelpTooltip";
 import TagInput from "@/components/shared/TagInput";
 import FlowSteps from "@/components/flow/FlowSteps";
+import QAPairsTable from "@/components/use-case/QAPairsTable";
 import { cn } from "@/lib/utils";
 import type { UseCase } from "@/types";
 
@@ -64,12 +65,9 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
 
   const update = (patch: Partial<UseCase>) => updateUseCase(useCase.id, patch);
 
-  const handleQuestionChange = (q: string) => {
-    update({
-      userQuestion: q,
-      title: q.slice(0, 50) || `תרחיש ${index + 1}`,
-    });
-  };
+  const firstQuestion = useCase.qaPairs?.[0]?.question ?? "";
+  const displayTitle =
+    useCase.useCaseName || firstQuestion.slice(0, 50) || `תרחיש שימוש #${index + 1}`;
 
   return (
     <Card className={cn("use-case-card overflow-hidden", !useCase.isCollapsed && "border-indigo-200/80 ring-indigo-100")}>
@@ -88,11 +86,11 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-800">
-              {useCase.useCaseName || useCase.title || `תרחיש שימוש #${index + 1}`}
+              {displayTitle}
             </p>
-            {useCase.isCollapsed && useCase.userQuestion && (
+            {useCase.isCollapsed && firstQuestion && (
               <p className="text-xs text-slate-400 mt-0.5 max-w-xs truncate">
-                {useCase.userQuestion}
+                {firstQuestion}
               </p>
             )}
           </div>
@@ -138,52 +136,15 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
             />
           </section>
 
-          {/* ── Section 1: Description — indigo tint ──────────────────────── */}
+          {/* ── Section 1: QA Pairs — indigo tint ──────────────────────── */}
           <section className="rounded-2xl bg-gradient-to-l from-indigo-50/80 to-white border border-indigo-100 px-4 pt-4 pb-5 shadow-sm">
             <SectionHeader
               number="①"
-              title="השאלות האפשריות והתשובות המצופות"
-              subtitle="הגדירו אילו שאלות משתמשים עשויים לשאול במסגרת תרחיש זה, ומהי התשובה שהסוכן צריך לספק.
-"
+              title="השאלות האפשריות, התשובות ומקורות המידע"
+              subtitle="הגדירו אילו שאלות משתמשים עשויים לשאול, מהי התשובה שהסוכן צריך לספק, ומאיפה הוא שולף את המידע."
               accentClass="border-indigo-100 text-indigo-800"
             />
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor={`question-${useCase.id}`} required>
-                  <span className="flex items-center gap-1.5">
-                    <MessageSquare size={13} className="text-indigo-500" />
-                    שאלות משתמש אפשריות
-                    <HelpTooltip text="כתוב כמו שהמשתמש היה שואל באמת." />
-                  </span>
-                </Label>
-                <Textarea
-                  id={`question-${useCase.id}`}
-                  rows={3}
-                  placeholder='לדוגמה: "מה הסטטוס של הזמנה 123?"'
-                  value={useCase.userQuestion}
-                  onChange={(e) => handleQuestionChange(e.target.value)}
-                  className="bg-white"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor={`answer-${useCase.id}`} required>
-                  <span className="inline-flex items-center gap-1.5">
-                  תשובות הסוכן המצופות בהתאמה לשאלות
-                    <HelpTooltip text="מספיק לתאר את המידע החשוב שהמשתמש צריך לקבל." />
-                  </span>
-                </Label>
-                <Textarea
-                  id={`answer-${useCase.id}`}
-                  rows={3}
-                  placeholder='לדוגמה: "ההזמנה אושרה ומועד האספקה הצפוי הוא 12.6.2026"'
-                  value={useCase.expectedAnswer}
-                  onChange={(e) => update({ expectedAnswer: e.target.value })}
-                  className="bg-white"
-                />
-              </div>
-            </div>
+            <QAPairsTable useCaseId={useCase.id} />
           </section>
 
           {/* ── Section 2: Background — slate tint ────────────────────────── */}

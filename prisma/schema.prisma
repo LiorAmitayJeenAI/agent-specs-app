@@ -20,6 +20,8 @@ model Project {
   client_id               String
   project_name            String
   document_author_name    String
+  author_department       String?
+  author_position         String?
   requested_agent_name    String
   short_agent_description String
   created_at              DateTime              @default(now())
@@ -37,7 +39,7 @@ model UseCase {
   project_id      String
   use_case_name   String
   title           String?
-  user_question   String
+  user_question   String?
   expected_answer String?
   performed_by    String?
   current_systems String[]
@@ -46,6 +48,7 @@ model UseCase {
   updated_at      DateTime        @updatedAt
   project         Project         @relation(fields: [project_id], references: [project_id])
   flow_steps      FlowStep[]
+  qa_pairs        UseCaseQAPair[]
   success_metrics SuccessMetric[]
 }
 
@@ -73,16 +76,31 @@ model File {
   uploaded_at         DateTime @default(now())
 }
 
+model UseCaseQAPair {
+  qa_pair_id      String      @id @default(uuid())
+  use_case_id     String
+  order           Int         @default(0)
+  question        String
+  expected_answer String
+  data_source_ref String?
+  data_source_id  String?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  use_case        UseCase     @relation(fields: [use_case_id], references: [use_case_id])
+  data_source     DataSource? @relation(fields: [data_source_id], references: [data_source_id])
+}
+
 model DataSource {
-  data_source_id String  @id @default(uuid())
+  data_source_id String          @id @default(uuid())
   project_id     String
   source_name    String
   source_type    String?
   description    String?
   access_method  String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-  project        Project @relation(fields: [project_id], references: [project_id])
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+  project        Project         @relation(fields: [project_id], references: [project_id])
+  qa_pairs       UseCaseQAPair[]
 }
 
 model GlossaryTerm {
