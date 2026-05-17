@@ -87,7 +87,7 @@ export default function TagInput({
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           onFocus={() => input && setShowSuggestions(true)}
           placeholder={value.length === 0 ? placeholder : "הוסף עוד..."}
-          className="flex-1 min-w-[120px] bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+          className="flex-1 min-w-[120px] bg-transparent text-sm text-slate-900 placeholder:text-slate-400 placeholder:italic outline-none"
         />
       </div>
 

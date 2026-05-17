@@ -32,8 +32,8 @@ export default function Step3Concepts() {
           </div>
           <p className="text-slate-500 text-sm mb-5">הוסף מונחים ייחודיים שחשוב שהסוכן יכיר</p>
           <Button onClick={addConcept} variant="secondary">
-            <Plus size={15} />
             הוסף מושג
+            <Plus size={15} />
           </Button>
         </div>
       ) : (
@@ -96,8 +96,8 @@ export default function Step3Concepts() {
             onClick={addConcept}
             className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-violet-200 rounded-3xl text-violet-600 bg-white/60 hover:bg-violet-50 transition-colors text-sm font-medium shadow-sm"
           >
-            <Plus size={15} />
             הוסף מושג נוסף
+            <Plus size={15} />
           </button>
         </div>
       )}

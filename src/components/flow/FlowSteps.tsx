@@ -31,7 +31,7 @@ export default function FlowSteps({ useCaseId }: FlowStepsProps) {
       <div className="flex items-start justify-between gap-4">
         <div className="text-right">
           <h3 className="text-2xl font-bold text-[#1A1A2E]">
-            3. תהליך קיים בפועל (Flow)
+            3.  פירוט התהליך הקיים (Flow)
           </h3>
           <p className="mt-1 text-sm text-[#4A4A6A]">
             פרט את השלבים שהמשתמש מבצע כיום, לפי הסדר, כולל מסכים וחישובים רלוונטיים.
@@ -77,9 +77,9 @@ export default function FlowSteps({ useCaseId }: FlowStepsProps) {
         onClick={() => addFlowStep(useCaseId)}
         className="w-full justify-center rounded-[10px] border-[#2ABFAB] text-[#2ABFAB] hover:bg-[#2ABFAB]/5"
       >
-        <Plus size={15} />
-        הוסף שלב נוסף
-      </Button>
+        הוסף שלב לתהליך   
+        <Plus size={15} />   
+        </Button>
     </div>
   );
 }

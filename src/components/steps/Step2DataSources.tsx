@@ -52,8 +52,8 @@ export default function Step2DataSources() {
           </div>
           <p className="text-slate-500 text-sm mb-5">הוסף את מקורות הנתונים שהסוכן ישתמש בהם</p>
           <Button onClick={addDataSource} variant="secondary">
-            <Plus size={15} />
             הוסף מקור מידע
+            <Plus size={15} />
           </Button>
         </div>
       ) : (
@@ -183,8 +183,8 @@ export default function Step2DataSources() {
             onClick={addDataSource}
             className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-emerald-200 rounded-3xl text-emerald-600 bg-white/60 hover:bg-emerald-50 transition-colors text-sm font-medium shadow-sm"
           >
-            <Plus size={15} />
             הוסף מקור מידע נוסף
+            <Plus size={15} />
           </button>
         </div>
       )}

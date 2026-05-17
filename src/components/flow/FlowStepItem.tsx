@@ -80,7 +80,7 @@ export default function FlowStepItem({
             </div>
 
             <div className="rounded-xl border border-[#E0E0E0] bg-white px-4 py-3">
-              <p className="text-center text-sm font-medium text-[#4A4A6A]">יש חישוב בשלב זה?</p>
+              <p className="text-center text-sm font-medium text-[#4A4A6A]">האם מתבצע בשלב זה חישוב או לוגיקה עסקית?</p>
               <div className="mt-2 flex items-center justify-center gap-6">
                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-[#4A4A6A]">
                   <input
@@ -116,7 +116,7 @@ export default function FlowStepItem({
               <div className="min-h-0 overflow-hidden">
                 <div className="mt-4">
                   <Label htmlFor={`calc-${step.id}`} className="text-center">
-                    פרט את החישוב:
+                  תיאור החישוב / הלוגיקה העסקית                  
                   </Label>
                   <Textarea
                     id={`calc-${step.id}`}

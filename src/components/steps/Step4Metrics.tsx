@@ -32,8 +32,8 @@ export default function Step4Metrics() {
           </div>
           <p className="text-slate-500 text-sm mb-5">הגדר מדד הצלחה ראשון עבור הסוכן</p>
           <Button onClick={addSuccessMetric} variant="secondary">
-            <Plus size={15} />
             הוסף מדד
+            <Plus size={15} />
           </Button>
         </div>
       ) : (
@@ -99,8 +99,8 @@ export default function Step4Metrics() {
             onClick={addSuccessMetric}
             className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-200 rounded-3xl text-amber-600 bg-white/60 hover:bg-amber-50 transition-colors text-sm font-medium shadow-sm"
           >
-            <Plus size={15} />
             הוסף מדד נוסף
+            <Plus size={15} />
           </button>
         </div>
       )}

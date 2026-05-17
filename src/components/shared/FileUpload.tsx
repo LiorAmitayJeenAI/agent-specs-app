@@ -178,8 +178,8 @@ export default function FileUpload({
         )}
         onClick={() => inputRef.current?.click()}
       >
-        <Upload size={16} />
         העלה צילום מסך
+        <Upload size={16} />
       </button>
       <input
         ref={inputRef}

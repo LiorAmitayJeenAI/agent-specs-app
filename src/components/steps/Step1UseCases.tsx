@@ -69,8 +69,8 @@ export default function Step1UseCases() {
             לחץ על הכפתור למטה כדי להוסיף את התרחיש הראשון
           </p>
           <Button onClick={addUseCase} size="lg">
-            <Plus size={17} />
             הוסף תרחיש שימוש ראשון
+            <Plus size={17} />
           </Button>
         </div>
       ) : (
@@ -85,8 +85,8 @@ export default function Step1UseCases() {
             onClick={addUseCase}
             className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-dashed border-indigo-200 rounded-3xl text-indigo-600 bg-white/60 hover:bg-indigo-50 hover:border-indigo-300 transition-colors text-sm font-medium shadow-sm"
           >
-            <Plus size={16} />
             הוסף תרחיש שימוש נוסף
+            <Plus size={16} />
           </button>
         </>
       )}

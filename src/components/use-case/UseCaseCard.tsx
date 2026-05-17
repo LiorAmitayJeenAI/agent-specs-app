@@ -248,7 +248,7 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
             <SectionHeader
               number="③"
               title="איך זה עובד היום?"
-              subtitle="הוסף שלבים קצרים, אפשר לצרף צילום מסך לכל שלב"
+              subtitle="פרטו שלב אחר שלב כיצד מגיעים כיום לתשובה , כולל המסכים השונים וחישובים שמתבצעים לאורך התהליך."
               accentClass="border-violet-100 text-violet-800"
             />
             <FlowSteps useCaseId={useCase.id} />
