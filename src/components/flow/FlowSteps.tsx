@@ -32,8 +32,8 @@ export default function FlowSteps({ useCaseId }: FlowStepsProps) {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div className="text-right">
-          <h3 className="text-2xl font-bold text-[#1A1A2E]">
-            3.  פירוט התהליך הקיים (Flow)
+          <h3 className="text-base font-semibold text-[#1A1A2E]">
+            שלבי התהליך
             <span className="mr-1 text-red-500">*</span>
           </h3>
           <p className="mt-1 text-sm text-[#4A4A6A]">
@@ -49,15 +49,19 @@ export default function FlowSteps({ useCaseId }: FlowStepsProps) {
 
       {/* Empty state */}
       {steps.length === 0 && (
-        <div className="text-center py-8 px-4 bg-[#F4F5F7] rounded-2xl border-2 border-dashed border-[#E0E0E0] mb-4">
+        <button
+          type="button"
+          onClick={() => addFlowStep(useCaseId)}
+          className="w-full text-center py-8 px-4 bg-[#F4F5F7] rounded-2xl border-2 border-dashed border-[#E0E0E0] mb-4 transition-colors hover:bg-[#EFEFF8] hover:border-[#C4B8FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4FE8]/30"
+        >
           <div className="w-10 h-10 rounded-xl bg-[#5B4FE8]/10 flex items-center justify-center mx-auto mb-3 text-[#5B4FE8]">
             <Plus size={18} />
           </div>
           <p className="text-sm font-medium text-[#4A4A6A] mb-1">אין שלבים עדיין</p>
           <p className="text-xs text-[#AAAACC]">
-            הוסף את הצעד הראשון בתהליך הקיים
+            לחצו כדי להוסיף את הצעד הראשון בתהליך הקיים
           </p>
-        </div>
+        </button>
       )}
 
       {/* Steps timeline */}
@@ -79,15 +83,17 @@ export default function FlowSteps({ useCaseId }: FlowStepsProps) {
       )}
 
       {/* Add step button */}
-      <Button
-        variant="outline"
-        size="md"
-        onClick={() => addFlowStep(useCaseId)}
-        className="w-full justify-center rounded-[10px] border-[#2ABFAB] text-[#2ABFAB] hover:bg-[#2ABFAB]/5"
-      >
-        הוסף שלב לתהליך   
-        <Plus size={15} />   
+      {steps.length > 0 && (
+        <Button
+          variant="outline"
+          size="md"
+          onClick={() => addFlowStep(useCaseId)}
+          className="w-full justify-center rounded-[10px] border-[#2ABFAB] text-[#2ABFAB] hover:bg-[#2ABFAB]/5"
+        >
+          הוסף שלב לתהליך
+          <Plus size={15} />
         </Button>
+      )}
     </div>
   );
 }

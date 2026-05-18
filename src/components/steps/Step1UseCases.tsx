@@ -9,12 +9,23 @@ import UseCaseCard from "@/components/use-case/UseCaseCard";
 export default function Step1UseCases() {
   const { useCases, addUseCase, nextStep } = useFormStore();
   const [tipDismissed, setTipDismissed] = useState(false);
+  const [showFlowValidation, setShowFlowValidation] = useState(false);
   const hasMissingRequiredFlow = useCases.some(
     (useCase) =>
       useCase.flowSteps.length === 0 ||
       useCase.flowSteps.some((step) => !step.description.trim())
   );
-  const canContinue = useCases.length > 0 && !hasMissingRequiredFlow;
+  const canAttemptContinue = useCases.length > 0;
+
+  const handleContinue = () => {
+    if (hasMissingRequiredFlow) {
+      setShowFlowValidation(true);
+      return;
+    }
+
+    setShowFlowValidation(false);
+    nextStep();
+  };
 
   return (
     <div className="space-y-7 animate-fade-in">
@@ -27,8 +38,7 @@ export default function Step1UseCases() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-950">תרחישי שימוש</h1>
         </div>
         <p className="text-slate-500 text-sm leading-relaxed mt-2 max-w-2xl">
-          תאר את השאלות שמשתמשים שואלים היום באופן ידני. כל תרחיש יעזור לנו להבין מה הסוכן צריך לבצע.
-        </p>
+        תארו כיצד התהליך מתבצע כיום, למשל: שאלות נפוצות של משתמשים, שלבי עבודה או פעולות קבועות. כל דוגמה תעזור לנו להבין בדיוק מה הפתרון צריך לבצע.        </p>
       </div>
 
       {/* ── Tip Banner ──────────────────────────────────────────────────────── */}
@@ -100,21 +110,23 @@ export default function Step1UseCases() {
       {/* ── Navigation ──────────────────────────────────────────────────────── */}
       <div className="flex justify-between items-center pt-4 border-t border-white/70">
         <div />
-        <Button
-          onClick={nextStep}
-          size="lg"
-          disabled={!canContinue}
-          className="gap-2"
-        >
-          המשך לשלב הבא
-          <ChevronLeft size={17} />
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          {showFlowValidation && hasMissingRequiredFlow && (
+            <p className="text-left text-xs text-red-500">
+              יש לפרט את התהליך הקיים בכל תרחיש שימוש כדי להמשיך.
+            </p>
+          )}
+          <Button
+            onClick={handleContinue}
+            size="lg"
+            disabled={!canAttemptContinue}
+            className="gap-2"
+          >
+            המשך לשלב הבא
+            <ChevronLeft size={17} />
+          </Button>
+        </div>
       </div>
-      {hasMissingRequiredFlow && (
-        <p className="text-left text-xs text-red-500">
-          יש למלא פירוט התהליך הקיים (Flow) בכל תרחיש שימוש כדי להמשיך.
-        </p>
-      )}
     </div>
   );
 }

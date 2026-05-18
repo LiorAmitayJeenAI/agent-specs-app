@@ -120,39 +120,57 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
       {/* ── Collapsible Body ────────────────────────────────────────────────── */}
       {!useCase.isCollapsed && (
         <CardContent className="px-5 py-5 space-y-4 animate-fade-in">
-          <section className="rounded-2xl bg-white border border-indigo-100 px-4 py-4 shadow-sm">
-            <Label htmlFor={`use-case-name-${useCase.id}`} required>
-              <span className="inline-flex items-center gap-1.5">
-                שם תרחיש השימוש
-                <HelpTooltip text="שם קצר שיעזור לזהות את התרחיש גם אם יש בו כמה שאלות." />
-              </span>
-            </Label>
-            <Input
-              id={`use-case-name-${useCase.id}`}
-              placeholder='לדוגמה: "בדיקת סטטוס הזמנה", "פתיחת קריאת שירות"'
-              value={useCase.useCaseName}
-              onChange={(e) => update({ useCaseName: e.target.value })}
-              className="bg-white"
-            />
-          </section>
-
-          {/* ── Section 1: QA Pairs — indigo tint ──────────────────────── */}
+          {/* ── Section 1: Name and description — indigo tint ─────────────── */}
           <section className="rounded-2xl bg-gradient-to-l from-indigo-50/80 to-white border border-indigo-100 px-4 pt-4 pb-5 shadow-sm">
             <SectionHeader
               number="①"
-              title="השאלות האפשריות, התשובות ומקורות המידע"
-              subtitle="הגדירו אילו שאלות משתמשים עשויים לשאול, מהי התשובה שהסוכן צריך לספק, ומאיפה הוא שולף את המידע."
+              title="שם ותיאור התרחיש"
+              subtitle="תנו לתרחיש שם קצר ותיאור ברור של המטרה העסקית שלו."
               accentClass="border-indigo-100 text-indigo-800"
             />
-            <QAPairsTable useCaseId={useCase.id} />
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor={`use-case-name-${useCase.id}`} required>
+                  <span className="inline-flex items-center gap-1.5">
+                    שם תרחיש השימוש
+                    <HelpTooltip text="שם קצר שיעזור לזהות את התרחיש גם אם יש בו כמה שאלות." />
+                  </span>
+                </Label>
+                <Input
+                  id={`use-case-name-${useCase.id}`}
+                  placeholder='לדוגמה: "בדיקת סטטוס הזמנה", "פתיחת קריאת שירות"'
+                  value={useCase.useCaseName}
+                  onChange={(e) => update({ useCaseName: e.target.value })}
+                  className="bg-white"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor={`use-case-description-${useCase.id}`}>
+                  <span className="inline-flex items-center gap-1.5">
+                    תיאור התרחיש
+                    <HelpTooltip text="תיאור קצר של הצורך העסקי, המשתמשים, ומה הסוכן אמור לעזור להשיג בתרחיש הזה." />
+                  </span>
+                </Label>
+                <Textarea
+                  id={`use-case-description-${useCase.id}`}
+                  rows={3}
+                  placeholder="תארו בקצרה מה המשתמש מנסה להשיג בתרחיש הזה ולמה הוא חשוב."
+                  value={useCase.title}
+                  onChange={(e) => update({ title: e.target.value })}
+                  className="bg-white"
+                />
+              </div>
+            </div>
           </section>
 
-          {/* ── Section 2: Background — slate tint ────────────────────────── */}
+          {/* ── Section 2: Current process context — slate tint ───────────── */}
           <section className="rounded-2xl bg-white border border-slate-200/80 px-4 pt-4 pb-5 shadow-sm">
             <SectionHeader
               number="②"
               title="התהליך הקיים כיום"
-              subtitle="כיצד התהליך מתבצע כיום לפני האוטומציה (ידנית)"
+              subtitle="מי מבצע את התהליך היום ואילו מערכות מעורבות בו."
               accentClass="border-slate-200 text-slate-700"
             />
 
@@ -204,12 +222,23 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
             </div>
           </section>
 
-          {/* ── Section 3: Flow — violet tint ─────────────────────────────── */}
+          {/* ── Section 3: QA Pairs — violet tint ─────────────────────────── */}
           <section className="rounded-2xl bg-gradient-to-l from-violet-50/70 to-white border border-violet-100 px-4 pt-4 pb-5 shadow-sm">
             <SectionHeader
               number="③"
-              title="איך זה עובד היום?"
-              subtitle="פרטו שלב אחר שלב כיצד מגיעים כיום לתשובה , כולל המסכים השונים וחישובים שמתבצעים לאורך התהליך."
+              title="דוגמאות לשאלות אפשריות, תשובות ומקורות מידע"
+              subtitle="הגדירו את השאלות הנפוצות שעולות כיום בעבודה השוטפת, ומהי התשובה המצופה. "
+              accentClass="border-violet-100 text-violet-800"
+            />
+            <QAPairsTable useCaseId={useCase.id} />
+          </section>
+
+          {/* ── Section 4: Flow — violet tint ─────────────────────────────── */}
+          <section className="rounded-2xl bg-gradient-to-l from-violet-50/70 to-white border border-violet-100 px-4 pt-4 pb-5 shadow-sm">
+            <SectionHeader
+              number="④"
+              title="פירוט התהליך הקיים (Flow)"
+              subtitle="פרטו שלב אחר שלב כיצד מגיעים כיום לתשובה, כולל מסכים, חישובים וקבצים רלוונטיים."
               accentClass="border-violet-100 text-violet-800"
             />
             <FlowSteps useCaseId={useCase.id} />

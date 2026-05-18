@@ -21,12 +21,32 @@ export function readFileAsDataURL(file: File): Promise<string> {
 }
 
 export const STEP_CONFIGS = [
-  { id: 1, title: "פרטי הסוכן", subtitle: "הגדרת זהות ומטרת הסוכן" },
+  { id: 1, title: "אפיון הצורך העסקי", subtitle: "הגדרת הצורך העסקי ומטרתו" },
   { id: 2, title: "תרחישי שימוש", subtitle: "הגדרת תרחישי השימוש והתהליך הקיים" },
   { id: 3, title: "מקורות מידע", subtitle: "הגדרת מקורות המידע הנדרשים" },
   { id: 4, title: "מושגים והגדרות", subtitle: "מונחים עסקיים והגדרות רלוונטיות" },
   { id: 5, title: "מדדי הצלחה", subtitle: "כיצד נמדוד את הצלחת הסוכן" },
   { id: 6, title: "סיכום ושליחה", subtitle: "בדיקה ואישור סופי" },
+];
+
+export const LOGIN_STEP_CONFIGS = [
+  {
+    id: 1,
+    title: "אפיון הצורך העסקי",
+    subtitle: "נגדיר את המשימה, התהליך הקיים והערך העסקי הרצוי.",
+  },
+  {
+    id: 2,
+    title: "תרחישי שימוש",
+    subtitle: "נבין אילו שאלות או פעולות המשתמשים ירצו לבצע ומה התוצאה המצופה.",
+  },
+  {
+    id: 3,
+    title: "מקורות מידע",
+    subtitle: "נזהה מאיפה לערכות, נתונים ותהליכים הפתרון יתבסס.",
+  },
+  { id: 4, title: "מושגים והגדרות", subtitle: "" },
+  { id: 5, title: "מדדי הצלחה", subtitle: "" },
 ];
 
 export const LOCKED_FORM_STEP_IDS = [4, 5];

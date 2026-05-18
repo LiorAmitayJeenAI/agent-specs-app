@@ -219,11 +219,25 @@ export default function Step5Summary() {
       ? useCases.flatMap((uc, ucIndex): DocumentBlock[] => [
           {
             kind: "subheading",
-            text: `תרחיש ${ucIndex + 1}: ${uc.useCaseName || uc.title || "תרחיש ללא שם"}`,
+            text: `תרחיש ${ucIndex + 1}: ${uc.useCaseName || uc.qaPairs?.[0]?.question || "תרחיש ללא שם"}`,
           },
           ...editableTextBlocks("שם תרחיש השימוש", uc.useCaseName, (useCaseName) =>
             updateUseCase(uc.id, { useCaseName })
           ),
+          ...editableTextBlocks("תיאור התרחיש", uc.title, (title) =>
+            updateUseCase(uc.id, { title })
+          ),
+          { kind: "subheading", text: "התהליך הקיים כיום" },
+          ...editableTextBlocks("מבצע התהליך כיום", uc.performer, (performer) =>
+            updateUseCase(uc.id, { performer })
+          ),
+          ...editableListBlocks("מערכות מעורבות", uc.systemsInvolved, (systemsInvolved) =>
+            updateUseCase(uc.id, { systemsInvolved })
+          ),
+          ...editableTextBlocks("הערות נוספות", uc.additionalNotes, (additionalNotes) =>
+            updateUseCase(uc.id, { additionalNotes })
+          ),
+          { kind: "subheading", text: "דוגמאות לשאלות אפשריות, תשובות ומקורות מידע" },
           ...(uc.qaPairs ?? []).flatMap((pair, pairIndex): DocumentBlock[] => [
             { kind: "label", text: `שאלה ${pairIndex + 1}` },
             {
@@ -247,16 +261,7 @@ export default function Step5Summary() {
                 updateQAPair(uc.id, pair.id, { dataSourceRef }),
             },
           ]),
-          ...editableTextBlocks("מבצע התהליך כיום", uc.performer, (performer) =>
-            updateUseCase(uc.id, { performer })
-          ),
-          ...editableListBlocks("מערכות מעורבות", uc.systemsInvolved, (systemsInvolved) =>
-            updateUseCase(uc.id, { systemsInvolved })
-          ),
-          ...editableTextBlocks("הערות נוספות", uc.additionalNotes, (additionalNotes) =>
-            updateUseCase(uc.id, { additionalNotes })
-          ),
-          { kind: "subheading", text: "תהליך קיים בפועל" },
+          { kind: "subheading", text: "פירוט התהליך הקיים (Flow)" },
           ...(uc.flowSteps.length > 0
             ? uc.flowSteps.flatMap((step): DocumentBlock[] => [
                 { kind: "label", text: `שלב ${step.order}` },

@@ -20,28 +20,28 @@ export default function StepAgentDetails() {
           <div className="w-9 h-9 rounded-2xl bg-[#EEE9FF] text-[#5B4FE8] flex items-center justify-center ring-1 ring-[#C4B8FF]/50">
             <Bot size={16} />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">פרטי הסוכן</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950">אפיון הצורך העסקי</h1>
         </div>
-        <p className="text-slate-500 text-sm leading-relaxed mt-2 max-w-lg">
-        הגדירו את זהות הסוכן והמטרה המרכזית שלו, כדי שנוכל להתאים את האפיון לצורך העסקי.
+        <p className="text-slate-500 text-sm leading-relaxed mt-2 max-w-2xl">
+        הגדירו את המשימה או התהליך, ואת המטרה שתרצו להשיג, כדי שנוכל להתאים את האפיון לצורך העסקי שלכם.
         </p>
       </div>
 
       <div className="rounded-[2rem] bg-white/80 border border-white/70 shadow-xl shadow-indigo-950/[0.04] px-6 py-6 space-y-5">
         <div>
-          <Label htmlFor="agent-name" required>שם הסוכן</Label>
+          <Label htmlFor="agent-name" required>שם התהליך או המשימה</Label>
           <Input
             id="agent-name"
             value={agentDetails.requestedAgentName}
             onChange={(event) =>
               updateAgentDetails({ requestedAgentName: event.target.value })
             }
-            placeholder='לדוגמה: סוכן רכש ארגוני'
+            placeholder='קליטת עובד חדש, ניהול רכש ארגוני, מענה לפניות לקוחות.'
           />
         </div>
 
         <div>
-          <Label htmlFor="agent-description" required>תיאור קצר של הסוכן</Label>
+          <Label htmlFor="agent-description" required>תיאור קצר של התהליך או המשימה</Label>
           <Textarea
             id="agent-description"
             rows={4}
@@ -49,7 +49,7 @@ export default function StepAgentDetails() {
             onChange={(event) =>
               updateAgentDetails({ shortAgentDescription: event.target.value })
             }
-            placeholder="תאר בקצרה מה הסוכן עושה, עבור מי, ומה הערך המרכזי שלו."
+            placeholder="תארו בקצרה מה קורה בתהליך כיום, מי קהל היעד (עבור מי), ומהו הערך המרכזי שתרצו לקבל מהתוצר."
           />
         </div>
       </div>

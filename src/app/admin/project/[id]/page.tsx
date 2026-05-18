@@ -647,15 +647,33 @@ export default function ProjectDetailPage() {
                   className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4"
                 >
                   <h3 className="text-sm font-bold text-slate-800">
-                    תרחיש {ucIndex + 1}: {uc.name || uc.title || "ללא שם"}
+                    תרחיש {ucIndex + 1}: {uc.name || uc.qaPairs[0]?.question || "ללא שם"}
                   </h3>
 
                   <ReadOnlyField label="שם התרחיש" value={uc.name} />
+                  <ReadOnlyField label="תיאור התרחיש" value={uc.title} />
+
+                  <ReadOnlyField label="מבצע התהליך כיום" value={uc.performedBy} />
+
+                  {uc.systems.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-1">מערכות מעורבות</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {uc.systems.map((sys) => (
+                          <Badge key={sys} variant="secondary" className="text-xs">
+                            {sys}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <ReadOnlyField label="הערות נוספות" value={uc.notes} />
 
                   {/* QA Pairs */}
                   {uc.qaPairs.length > 0 && (
                     <div className="space-y-3">
-                      <p className="text-xs font-semibold text-slate-600">שאלות ותשובות</p>
+                      <p className="text-xs font-semibold text-slate-600">שאלות אפשריות, תשובות ומקורות מידע</p>
                       {uc.qaPairs.map((qa, qi) => (
                         <div
                           key={qa.id}
@@ -679,23 +697,6 @@ export default function ProjectDetailPage() {
                       ))}
                     </div>
                   )}
-
-                  <ReadOnlyField label="מבצע התהליך כיום" value={uc.performedBy} />
-
-                  {uc.systems.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1">מערכות מעורבות</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {uc.systems.map((sys) => (
-                          <Badge key={sys} variant="secondary" className="text-xs">
-                            {sys}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <ReadOnlyField label="הערות נוספות" value={uc.notes} />
 
                   {/* Flow steps */}
                   {uc.flowSteps.length > 0 && (

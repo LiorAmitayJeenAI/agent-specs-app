@@ -55,7 +55,7 @@ export interface QAPair {
 export interface UseCase {
   id: string;
   useCaseName: string;
-  /** Short display title (auto-generated from first question) */
+  /** Use case description */
   title: string;
   qaPairs: QAPair[];
   performer: string;

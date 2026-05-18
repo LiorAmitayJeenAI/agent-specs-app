@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           create: body.useCases.map((useCase, index) => ({
             use_case_name:
               useCase.useCaseName.trim() ||
-              useCase.title.trim() ||
+              useCase.qaPairs?.[0]?.question?.trim() ||
               `תרחיש שימוש ${index + 1}`,
             title: useCase.title || null,
             user_question: useCase.qaPairs?.[0]?.question || null,
