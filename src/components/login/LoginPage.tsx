@@ -136,22 +136,23 @@ export default function LoginPage() {
                 <Clock size={18} />
               </div>
               <div>
-                <p className="font-semibold text-[#1A1A2E]">משך מילוי משוער</p>
-                <p className="mt-0.5 text-xs leading-5">15 - 20 דקות.</p>
+              <p className="font-semibold text-[#1A1A2E]">מומלץ להכין מראש</p>
+                <p className="mt-0.5 text-xs leading-5">
+                  דוגמאות לתהליכים קיימים, שאלות משתמשים, מסכים ומקורות מידע רלוונטיים.
+                </p>
+                
               </div>
             </div>
 
             <div className="hidden h-12 w-px bg-[#E2DDF8] sm:block" />
-
+            <p className="font-semibold text-[#1A1A2E]">משך מילוי משוער</p>
+            <p className="mt-0.5 text-xs leading-5">15 - 20 דקות.</p>
             <div className="flex items-center justify-center gap-3 text-center">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#5B4FE8] shadow-sm">
                 <Target size={18} />
               </div>
               <div>
-                <p className="font-semibold text-[#1A1A2E]">מומלץ להכין מראש</p>
-                <p className="mt-0.5 text-xs leading-5">
-                  דוגמאות לתהליכים קיימים, שאלות משתמשים, מסכים ומקורות מידע רלוונטיים.
-                </p>
+                
               </div>
             </div>
           </div>

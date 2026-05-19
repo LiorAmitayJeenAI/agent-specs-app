@@ -6,7 +6,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 interface AdminStore {
   token: string;
   isAuthenticated: boolean;
-  login: (password: string) => void;
+  adminName: string;
+  adminRole: string;
+  login: (password: string, name?: string, role?: string) => void;
   logout: () => void;
 }
 
@@ -15,9 +17,16 @@ export const useAdminStore = create<AdminStore>()(
     (set, get) => ({
       token: "",
       isAuthenticated: false,
+      adminName: "ליאור אמיתי",
+      adminRole: "מנהל מערכת",
 
-      login: (password: string) => {
-        set({ token: password, isAuthenticated: true });
+      login: (password: string, name?: string, role?: string) => {
+        set({
+          token: password,
+          isAuthenticated: true,
+          ...(name && { adminName: name }),
+          ...(role && { adminRole: role }),
+        });
       },
 
       logout: () => {
@@ -30,6 +39,8 @@ export const useAdminStore = create<AdminStore>()(
       partialize: (state) => ({
         token: state.token,
         isAuthenticated: state.isAuthenticated,
+        adminName: state.adminName,
+        adminRole: state.adminRole,
       }),
     }
   )

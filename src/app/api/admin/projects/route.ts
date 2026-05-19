@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAdminToken } from "@/lib/admin-auth";
 
-export async function GET(request: NextRequest) {
-  if (!verifyAdminToken(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET(_request: NextRequest) {
   try {
     const projects = await prisma.project.findMany({
-      orderBy: { created_at: "desc" },
+      orderBy: { updated_at: "desc" },
       include: {
         client: { select: { client_name: true } },
         use_cases: { select: { use_case_id: true } },
@@ -28,6 +23,7 @@ export async function GET(request: NextRequest) {
       authorDepartment: p.author_department,
       authorPosition: p.author_position,
       createdAt: p.created_at.toISOString(),
+      updatedAt: p.updated_at.toISOString(),
       counts: {
         useCases: p.use_cases.length,
         dataSources: p.data_sources.length,

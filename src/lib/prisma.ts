@@ -12,14 +12,16 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not configured");
 }
 
+const isLocalDb = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
+
 const adapter = new PrismaPg({
   connectionString,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ...(!isLocalDb && {
+    ssl: { rejectUnauthorized: false },
+  }),
 });
 
-const prismaCacheKey = `${connectionString}:ssl`;
+const prismaCacheKey = `${connectionString}:${isLocalDb ? "nossl" : "ssl"}`;
 
 export const prisma =
   globalForPrisma.prismaCacheKey === prismaCacheKey && globalForPrisma.prisma
