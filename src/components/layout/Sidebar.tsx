@@ -21,6 +21,7 @@ const lockedStepIds = new Set(LOCKED_FORM_STEP_IDS);
 export default function Sidebar() {
   const {
     currentStep,
+    isAdminView,
     agentDetails,
     useCases,
     dataSources,
@@ -32,7 +33,7 @@ export default function Sidebar() {
   const totalSteps = STEP_CONFIGS.length;
 
   const handleStepClick = (stepId: number) => {
-    if (lockedStepIds.has(stepId)) return;
+    if (!isAdminView && lockedStepIds.has(stepId)) return;
     goToStep(stepId);
   };
 
@@ -106,7 +107,7 @@ export default function Sidebar() {
         <ul className="space-y-0.5">
           {STEP_CONFIGS.map((step, index) => {
             const isActive = currentStep === step.id;
-            const isLocked = lockedStepIds.has(step.id);
+            const isLocked = !isAdminView && lockedStepIds.has(step.id);
             const isCompleted = !isLocked && isStepComplete(step.id);
             const badge = STEP_BADGES[index] ?? STEP_BADGES[STEP_BADGES.length - 1];
 

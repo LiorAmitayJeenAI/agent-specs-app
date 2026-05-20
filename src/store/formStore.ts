@@ -86,10 +86,52 @@ const newMetric = (): SuccessMetric => ({
   priority: "medium",
 });
 
+// ─── Admin project hydration types ──────────────────────────────────────────────
+
+export interface AdminProjectData {
+  projectId: string;
+  clientName: string;
+  projectName: string;
+  authorName: string;
+  authorDepartment: string | null;
+  authorPosition: string | null;
+  agentName: string;
+  agentDescription: string;
+  useCases: {
+    id: string;
+    name: string;
+    title: string | null;
+    performedBy: string | null;
+    systems: string[];
+    notes: string | null;
+    qaPairs: { id: string; order: number; question: string; expectedAnswer: string; dataSourceRef: string | null }[];
+    flowSteps: { id: string; order: number; description: string; hasCalculation: boolean; calculationDetails: string | null }[];
+  }[];
+  dataSources: { id: string; name: string; type: string | null; description: string | null; accessMethod: string | null }[];
+  concepts: { id: string; term: string; definition: string | null; examples: string | null }[];
+  metrics: { id: string; name: string; target: string | null; measurementMethod: string | null; priority: string }[];
+}
+
+type FormSnapshot = {
+  isLoginComplete: boolean;
+  isAdminView: boolean;
+  projectIntake: ProjectIntake;
+  agentDetails: AgentDetails;
+  currentStep: number;
+  maxAccessibleStep: number;
+  useCases: UseCase[];
+  dataSources: DataSource[];
+  concepts: Concept[];
+  successMetrics: SuccessMetric[];
+};
+
+let _backup: FormSnapshot | null = null;
+
 // ─── Store Interface ───────────────────────────────────────────────────────────
 
 interface FormStore {
   isLoginComplete: boolean;
+  isAdminView: boolean;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
   currentStep: number;
@@ -107,6 +149,11 @@ interface FormStore {
   nextStep: () => void;
   prevStep: () => void;
   resetForm: () => void;
+
+  // Admin project hydration
+  hydrateFromProject: (data: AdminProjectData) => void;
+  backupState: () => void;
+  restoreBackup: () => void;
 
   // Use Cases
   addUseCase: () => void;
@@ -159,6 +206,7 @@ interface FormStore {
 
 const initialFormState = {
   isLoginComplete: false,
+  isAdminView: false,
   projectIntake: {
     clientName: "",
     documentAuthorName: "",
@@ -188,19 +236,114 @@ export const useFormStore = create<FormStore>()(
   updateAgentDetails: (patch) =>
     set((s) => ({ agentDetails: { ...s.agentDetails, ...patch } })),
   goToStep: (step) => {
-    if (lockedStepIds.has(step)) return;
+    if (!get().isAdminView && lockedStepIds.has(step)) return;
     set({ currentStep: Math.min(Math.max(step, 1), 6) });
   },
   nextStep: () =>
     set((s) => {
-      const next = getNextUnlockedStep(s.currentStep, 1);
+      const next = s.isAdminView
+        ? Math.min(s.currentStep + 1, 6)
+        : getNextUnlockedStep(s.currentStep, 1);
       return {
         currentStep: next,
         maxAccessibleStep: Math.max(s.maxAccessibleStep, next),
       };
     }),
-  prevStep: () => set((s) => ({ currentStep: getNextUnlockedStep(s.currentStep, -1) })),
+  prevStep: () =>
+    set((s) => ({
+      currentStep: s.isAdminView
+        ? Math.max(s.currentStep - 1, 1)
+        : getNextUnlockedStep(s.currentStep, -1),
+    })),
   resetForm: () => set(initialFormState),
+
+  backupState: () => {
+    const s = get();
+    _backup = {
+      isLoginComplete: s.isLoginComplete,
+      isAdminView: s.isAdminView,
+      projectIntake: s.projectIntake,
+      agentDetails: s.agentDetails,
+      currentStep: s.currentStep,
+      maxAccessibleStep: s.maxAccessibleStep,
+      useCases: s.useCases,
+      dataSources: s.dataSources,
+      concepts: s.concepts,
+      successMetrics: s.successMetrics,
+    };
+  },
+
+  restoreBackup: () => {
+    if (_backup) {
+      set(_backup);
+      _backup = null;
+    }
+  },
+
+  hydrateFromProject: (data: AdminProjectData) => {
+    set({
+      isLoginComplete: true,
+      isAdminView: true,
+      projectIntake: {
+        clientName: data.clientName,
+        documentAuthorName: data.authorName,
+        department: data.authorDepartment ?? "",
+        position: data.authorPosition ?? "",
+      },
+      agentDetails: {
+        requestedAgentName: data.agentName,
+        shortAgentDescription: data.agentDescription,
+      },
+      currentStep: 1,
+      maxAccessibleStep: 6,
+      useCases: data.useCases.map((uc) => ({
+        id: uc.id,
+        useCaseName: uc.name,
+        title: uc.title ?? "",
+        performer: uc.performedBy ?? "",
+        systemsInvolved: uc.systems,
+        additionalNotes: uc.notes ?? "",
+        isCollapsed: false,
+        qaPairs: uc.qaPairs.map((qa) => ({
+          id: qa.id,
+          order: qa.order,
+          question: qa.question,
+          expectedAnswer: qa.expectedAnswer,
+          dataSourceRef: qa.dataSourceRef ?? "",
+        })),
+        flowSteps: uc.flowSteps.map((fs) => ({
+          id: fs.id,
+          order: fs.order,
+          description: fs.description,
+          hasCalculation: fs.hasCalculation,
+          calculationDetails: fs.calculationDetails ?? "",
+          files: [],
+          isCollapsed: false,
+        })),
+      })),
+      dataSources: data.dataSources.map((ds) => ({
+        id: ds.id,
+        name: ds.name,
+        type: ds.type ?? "",
+        description: ds.description ?? "",
+        accessMethod: ds.accessMethod ?? "",
+        files: [],
+      })),
+      concepts: data.concepts.map((c) => ({
+        id: c.id,
+        term: c.term,
+        definition: c.definition ?? "",
+        examples: c.examples ?? "",
+      })),
+      successMetrics: data.metrics.map((m) => ({
+        id: m.id,
+        metric: m.name,
+        target: m.target ?? "",
+        measurementMethod: m.measurementMethod ?? "",
+        priority: (m.priority as "high" | "medium" | "low") || "medium",
+      })),
+    });
+  },
 
   // ── Use Cases ────────────────────────────────────────────────────────────────
 

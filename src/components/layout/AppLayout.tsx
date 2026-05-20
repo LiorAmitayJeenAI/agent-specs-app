@@ -21,9 +21,9 @@ const STEP_COMPONENTS: Record<number, React.ComponentType> = {
 };
 
 export default function AppLayout() {
-  const { currentStep, isLoginComplete } = useFormStore();
+  const { currentStep, isLoginComplete, isAdminView } = useFormStore();
   const StepComponent = STEP_COMPONENTS[currentStep] ?? StepAgentDetails;
-  const isCurrentStepLocked = LOCKED_FORM_STEP_IDS.includes(currentStep);
+  const isCurrentStepLocked = !isAdminView && LOCKED_FORM_STEP_IDS.includes(currentStep);
 
   if (!isLoginComplete) {
     return <LoginPage />;
