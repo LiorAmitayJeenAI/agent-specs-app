@@ -94,6 +94,7 @@ interface ProjectDetail {
   authorName: string;
   authorDepartment: string | null;
   authorPosition: string | null;
+  status?: string | null;
   agentName: string;
   agentDescription: string;
   createdAt: string;
@@ -101,6 +102,19 @@ interface ProjectDetail {
   dataSources: DataSourceItem[];
   concepts: ConceptItem[];
   metrics: MetricItem[];
+}
+
+type ProjectStatus = "client_draft" | "pm_review" | "completed";
+
+const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
+  { value: "client_draft", label: "טיוטת לקוח" },
+  { value: "pm_review", label: "בטיפול מנהל פרויקט" },
+  { value: "completed", label: "הושלם" },
+];
+
+function normalizeProjectStatus(status: string | null | undefined): ProjectStatus {
+  if (status === "pm_review" || status === "completed") return status;
+  return "client_draft";
 }
 
 // ─── Section Wrapper ────────────────────────────────────────────────────────────
@@ -931,6 +945,25 @@ export default function ProjectDetailPage() {
                   minute: "2-digit",
                 })}
               />
+            </div>
+            <div className="flex items-start gap-2 sm:col-span-2">
+              <CheckCircle size={14} className="text-indigo-500 mt-1 shrink-0" />
+              <div className="w-full max-w-sm">
+                <Label>סטטוס מסמך</Label>
+                <select
+                  value={normalizeProjectStatus(project.status)}
+                  onChange={(e) =>
+                    updateProject({ status: e.target.value as ProjectStatus })
+                  }
+                  className="mt-1 flex w-full rounded-lg border border-[#E0E0E0] bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] shadow-sm transition focus:border-[#5B4FE8] focus:outline-none focus:shadow-[0_0_0_3px_rgba(91,79,232,0.1)]"
+                >
+                  {STATUS_OPTIONS.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </CardContent>
         </Card>

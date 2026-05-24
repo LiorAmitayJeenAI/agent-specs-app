@@ -24,6 +24,7 @@ model Project {
   author_position         String?
   requested_agent_name    String
   short_agent_description String
+  status                  ProjectStatus         @default(client_draft)
   created_at              DateTime              @default(now())
   updated_at              DateTime              @updatedAt
   client                  Client                @relation(fields: [client_id], references: [client_id])
@@ -32,6 +33,12 @@ model Project {
   glossary                GlossaryTerm[]
   success_metrics         SuccessMetric[]
   requirement_documents   RequirementDocument[]
+}
+
+enum ProjectStatus {
+  client_draft
+  pm_review
+  completed
 }
 
 model UseCase {

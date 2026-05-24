@@ -5,9 +5,10 @@ import {
   Trash2,
   Database,
   ChevronDown,
-  MessageCircleReply,
-  BookOpen,
-  AlertTriangle,
+  MessageCircle,
+  FileText,
+  Lightbulb,
+  Info,
 } from "lucide-react";
 import { useFormStore } from "@/store/formStore";
 import { Input } from "@/components/ui/input";
@@ -18,39 +19,44 @@ import type { QAPair } from "@/types";
 function InstructionCard() {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const columns = [
+  const rows = [
     {
-      icon: <MessageCircleReply size={16} className="text-violet-600" />,
-      title: "סגנון הנוסח",
-      text: "מומלץ להתייחס לטון הרצוי.\nלדוגמה: מקצועי, רשמי, ידידותי, מכירתי.",
+      icon: <FileText size={14} className="text-violet-600" />,
+      title: "שאלת משתמש",
+      text: "כתבו שאלות אמיתיות שמשתמשים עשויים לשאול במהלך העבודה השוטפת.",
     },
     {
-      icon: <BookOpen size={16} className="text-violet-600" />,
-      title: "מקור המידע",
-      text: "ציינו מאיפה מגיעים הנתונים לצורך מענה על השאלה.",
+      icon: <MessageCircle size={14} className="text-violet-600" />,
+      title: "תשובה מצופה",
+      text: "כתבו את התשובה שהייתם רוצים שהפתרון יחזיר למשתמש. במידת הצורך, ניתן לציין גם את סגנון או טון המענה הרצוי.",
     },
     {
-      icon: <AlertTriangle size={16} className="text-amber-500" />,
-      title: "שימו לב",
-      text: "הדוגמאות ומקורות המידע נועדו לחידוד הדרישות, ועשויים לשמש בעתיד ככלי לבדיקת איכות הפתרון.",
+      icon: <Database size={14} className="text-violet-600" />,
+      title: "מקור מידע",
+      text: "ציינו מאיפה מגיע המידע הדרוש למענה על השאלה.",
     },
   ];
 
   return (
-    <div className="rounded-2xl border border-violet-200/70 bg-gradient-to-l from-violet-50/80 via-purple-50/50 to-white shadow-sm overflow-hidden transition-all">
-      {/* Header — icon + title centered, arrow on the side */}
+    <div className="rounded-2xl border border-violet-200/70 bg-white shadow-sm overflow-hidden transition-all">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex items-center justify-between px-5 py-4 transition-colors hover:bg-violet-50/60 ${
-          isExpanded ? "border-b border-violet-100/60" : ""
+        className={`w-full flex items-center justify-between px-5 py-4 transition-colors hover:bg-slate-50/60 ${
+          isExpanded ? "border-b border-slate-100" : ""
         }`}
       >
         <span className="inline-flex items-center gap-2.5 text-sm font-semibold text-violet-800">
-          <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
-            <BookOpen size={14} className="text-violet-600" />
+          <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+            <Lightbulb size={14} className="text-amber-600" />
           </div>
-          הנחיות למילוי דוגמאות שאלות ותשובות
+          <span className="inline-flex items-center gap-2">
+            <span>הנחיות למילוי נכון</span>
+            <span className="text-violet-300">|</span>
+            <span className="text-[11px] font-normal text-violet-500">
+              טיפים שיעזרו לכם למלא את הטבלה בצורה מיטבית.
+            </span>
+          </span>
         </span>
         <ChevronDown
           size={16}
@@ -60,24 +66,35 @@ function InstructionCard() {
         />
       </button>
 
-      {/* Expanded content — 3 cards with centered icon + title */}
       {isExpanded && (
-        <div className="px-5 pb-5 pt-3 animate-fade-in">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {columns.map((col) => (
+        <div className="px-5 pb-5 pt-2 animate-fade-in">
+          <div className="divide-y divide-slate-100">
+            {rows.map((row) => (
               <div
-                key={col.title}
-                className="flex flex-col items-center gap-2.5 rounded-xl bg-white/80 border border-violet-100/60 p-5 shadow-sm text-center"
+                key={row.title}
+                className="flex items-start gap-3 py-3.5 first:pt-2 last:pb-0 px-2 -mx-2 rounded-lg hover:bg-slate-50/70 transition-colors"
               >
-                <div className="w-9 h-9 rounded-xl bg-violet-100/70 flex items-center justify-center">
-                  {col.icon}
+                <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                  <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center">
+                    {row.icon}
+                  </div>
+                  <span className="text-xs font-bold text-slate-800">
+                    {row.title}
+                  </span>
                 </div>
-                <p className="text-xs font-bold text-slate-800">{col.title}</p>
-                <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-line">
-                  {col.text}
-                </p>
+                <span className="text-xs text-slate-500 leading-relaxed pt-0.5">
+                  {row.text}
+                </span>
               </div>
             ))}
+          </div>
+
+          <div className="flex items-center gap-2.5 mt-4 px-3 py-2.5 rounded-lg bg-blue-50/70 border border-blue-100/60">
+            <Info size={14} className="text-blue-500 shrink-0" />
+            <p className="text-[11px] text-blue-600 leading-relaxed">
+              מומלץ להשתמש בדוגמאות אמיתיות מהעבודה היומיומית, כדי שנוכל להבין
+              טוב יותר את הצורך.
+            </p>
           </div>
         </div>
       )}

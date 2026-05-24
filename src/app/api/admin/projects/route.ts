@@ -22,6 +22,7 @@ export async function GET(_request: NextRequest) {
       authorName: p.document_author_name,
       authorDepartment: p.author_department,
       authorPosition: p.author_position,
+      status: p.status,
       createdAt: p.created_at.toISOString(),
       updatedAt: p.updated_at.toISOString(),
       counts: {

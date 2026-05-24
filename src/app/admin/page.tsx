@@ -30,6 +30,7 @@ interface ProjectSummary {
   authorName: string;
   authorDepartment: string | null;
   authorPosition: string | null;
+  status?: string | null;
   createdAt: string;
   updatedAt: string;
   counts: {
@@ -40,30 +41,21 @@ interface ProjectSummary {
   };
 }
 
-type ProjectStatus = "completed" | "awaiting_treatment" | "in_progress" | "client_draft";
-
-function deriveStatus(counts: ProjectSummary["counts"]): ProjectStatus {
-  const hasUseCases = counts.useCases > 0;
-  const hasDataSources = counts.dataSources > 0;
-  const hasConcepts = counts.concepts > 0;
-  const hasMetrics = counts.metrics > 0;
-
-  if (hasUseCases && hasDataSources && hasConcepts && hasMetrics)
-    return "completed";
-  if (hasUseCases && !hasConcepts && !hasMetrics) return "awaiting_treatment";
-  if (hasUseCases || hasDataSources) return "in_progress";
-  return "client_draft";
-}
+type ProjectStatus = "client_draft" | "pm_review" | "completed";
 
 const STATUS_CONFIG: Record<
   ProjectStatus,
   { label: string; variant: "success" | "warning" | "default" | "secondary" }
 > = {
-  completed: { label: "הושלם", variant: "success" },
-  awaiting_treatment: { label: "ממתין לטיפול", variant: "warning" },
-  in_progress: { label: "בעבודה", variant: "default" },
   client_draft: { label: "טיוטת לקוח", variant: "secondary" },
+  pm_review: { label: "בטיפול מנהל פרויקט", variant: "warning" },
+  completed: { label: "הושלם", variant: "success" },
 };
+
+function normalizeProjectStatus(status: string | null | undefined): ProjectStatus {
+  if (status === "pm_review" || status === "completed") return status;
+  return "client_draft";
+}
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -118,7 +110,8 @@ export default function AdminDashboard() {
 
   const filtered = projects.filter((p) => {
     if (selectedClient && p.clientName !== selectedClient) return false;
-    if (selectedStatus && deriveStatus(p.counts) !== selectedStatus) return false;
+    if (selectedStatus && normalizeProjectStatus(p.status) !== selectedStatus)
+      return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -131,10 +124,10 @@ export default function AdminDashboard() {
 
   const clientCount = new Set(projects.map((p) => p.clientName)).size;
   const completedCount = projects.filter(
-    (p) => deriveStatus(p.counts) === "completed"
+    (p) => normalizeProjectStatus(p.status) === "completed"
   ).length;
-  const awaitingCount = projects.filter(
-    (p) => deriveStatus(p.counts) === "awaiting_treatment"
+  const pmReviewCount = projects.filter(
+    (p) => normalizeProjectStatus(p.status) === "pm_review"
   ).length;
 
   return (
@@ -193,8 +186,8 @@ export default function AdminDashboard() {
             },
             {
               icon: <Clock size={18} />,
-              label: "ממתינים להשלמה",
-              value: awaitingCount,
+              label: "בטיפול מנהל פרויקט",
+              value: pmReviewCount,
               color:
                 "text-amber-600 bg-amber-50 border-amber-100 ring-amber-50",
             },
@@ -339,7 +332,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {filtered.map((project, idx) => {
-                  const status = deriveStatus(project.counts);
+                  const status = normalizeProjectStatus(project.status);
                   const statusCfg = STATUS_CONFIG[status];
 
                   return (

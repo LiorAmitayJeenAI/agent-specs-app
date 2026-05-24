@@ -10,6 +10,7 @@ interface AdminProjectPayload {
   authorPosition?: string | null;
   agentName: string;
   agentDescription: string;
+  status?: ProjectStatus;
   useCases: {
     name: string;
     title?: string | null;
@@ -47,7 +48,19 @@ interface AdminProjectPayload {
   }[];
 }
 
+type ProjectStatus = "client_draft" | "pm_review" | "completed";
+
+const PROJECT_STATUSES: ProjectStatus[] = [
+  "client_draft",
+  "pm_review",
+  "completed",
+];
+
 const hasText = (value: string | null | undefined) => Boolean(value?.trim());
+
+function isProjectStatus(value: unknown): value is ProjectStatus {
+  return typeof value === "string" && PROJECT_STATUSES.includes(value as ProjectStatus);
+}
 
 export async function GET(
   _request: NextRequest,
@@ -86,6 +99,7 @@ export async function GET(
       authorName: project.document_author_name,
       authorDepartment: project.author_department,
       authorPosition: project.author_position,
+      status: project.status,
       agentName: project.requested_agent_name,
       agentDescription: project.short_agent_description,
       createdAt: project.created_at.toISOString(),
@@ -162,9 +176,16 @@ export async function PUT(
       );
     }
 
+    if (body.status !== undefined && !isProjectStatus(body.status)) {
+      return NextResponse.json(
+        { error: "סטטוס הפרויקט אינו חוקי" },
+        { status: 400 }
+      );
+    }
+
     const existingProject = await prisma.project.findUnique({
       where: { project_id: projectId },
-      select: { project_id: true },
+      select: { project_id: true, status: true },
     });
 
     if (!existingProject) {
@@ -204,6 +225,7 @@ export async function PUT(
           author_position: body.authorPosition?.trim() || null,
           requested_agent_name: body.agentName.trim(),
           short_agent_description: body.agentDescription.trim(),
+          status: body.status ?? existingProject.status,
           use_cases: {
             create: body.useCases
               .filter(
