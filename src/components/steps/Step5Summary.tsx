@@ -18,7 +18,7 @@ import {
   type WordExportValue,
   type WordExportBlock,
 } from "@/lib/wordExport";
-import { useFormStore } from "@/store/formStore";
+import { useFormStore, type ProjectStatus } from "@/store/formStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +74,12 @@ const CUSTOMER_OPTIONS = [
   "חברת חשמל לישראל",
   "ישראכרט",
   "ביטוח ישיר",
+];
+
+const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
+  { value: "client_draft", label: "טיוטת לקוח" },
+  { value: "pm_review", label: "בבדיקת מנהל פרויקט" },
+  { value: "completed", label: "הושלם" },
 ];
 
 const SOURCE_TYPES = [
@@ -166,6 +172,9 @@ export default function Step5Summary() {
     updateSuccessMetric,
     prevStep,
     getOutput,
+    isAdminView,
+    projectStatus,
+    setProjectStatus,
   } = useFormStore();
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -556,6 +565,27 @@ export default function Step5Summary() {
         </CardContent>
       </Card>
 
+      {isAdminView && (
+        <Card>
+          <CardHeader>
+            <CardTitle>סטטוס מסמך</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <select
+              value={projectStatus}
+              onChange={(e) => setProjectStatus(e.target.value as ProjectStatus)}
+              className="flex w-full max-w-sm rounded-lg border border-[#E0E0E0] bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] shadow-sm transition focus:border-[#5B4FE8] focus:outline-none focus:shadow-[0_0_0_3px_rgba(91,79,232,0.1)]"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Summary overview */}
       <Card>
         <CardHeader className="px-5 py-3.5">
@@ -790,7 +820,7 @@ export default function Step5Summary() {
         </Button>
       </div>
 
-      {submitError && (
+      {!isAdminView && submitError && (
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
           <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-500" />
           <p>{submitError}</p>
@@ -803,24 +833,26 @@ export default function Step5Summary() {
           <ChevronRight size={17} />
           חזור
         </Button>
-        <Button
-          onClick={handleSubmit}
-          size="lg"
-          disabled={isLoading}
-          className="gap-2 from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 min-w-[160px] shadow-emerald-500/20"
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-              שולח...
-            </span>
-          ) : (
-            <>
-              <Send size={16} />
-              שלח לצוות
-            </>
-          )}
-        </Button>
+        {!isAdminView && (
+          <Button
+            onClick={handleSubmit}
+            size="lg"
+            disabled={isLoading}
+            className="gap-2 from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 min-w-[160px] shadow-emerald-500/20"
+          >
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                שולח...
+              </span>
+            ) : (
+              <>
+                <Send size={16} />
+                שלח לצוות
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

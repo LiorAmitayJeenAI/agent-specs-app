@@ -164,7 +164,7 @@ export default function AdminProjectViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "partial" | "error">("idle");
   const [saveError, setSaveError] = useState("");
   const backedUp = useRef(false);
 
@@ -202,12 +202,13 @@ export default function AdminProjectViewPage() {
 
     try {
       const store = useFormStore.getState();
-      const { projectIntake, agentDetails, useCases, dataSources, concepts, successMetrics } = store;
+      const { projectIntake, agentDetails, useCases, dataSources, concepts, successMetrics, projectStatus } = store;
 
       const payload = {
         clientName: projectIntake.clientName,
         projectName: agentDetails.requestedAgentName,
         authorName: projectIntake.documentAuthorName,
+        status: projectStatus,
         authorDepartment: projectIntake.department || null,
         authorPosition: projectIntake.position || null,
         agentName: agentDetails.requestedAgentName,
@@ -262,6 +263,7 @@ export default function AdminProjectViewPage() {
       }
 
       // 2. Generate Word document and upload to blob
+      let wordUploadError: string | null = null;
       try {
         const wordBlocks = buildWordBlocks(store);
         const docxBlob = await createHebrewWordBlob(wordBlocks);
@@ -292,14 +294,25 @@ export default function AdminProjectViewPage() {
         });
 
         if (!uploadRes.ok) {
-          console.error("DOCX blob upload failed (non-blocking)");
+          const uploadBody = (await uploadRes.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(uploadBody?.error ?? "שגיאה בעדכון קובץ ה-Word בענן");
         }
       } catch (docxErr) {
         console.error("DOCX generation/upload error (non-blocking):", docxErr);
+        wordUploadError =
+          docxErr instanceof Error
+            ? docxErr.message
+            : "שגיאה בעדכון קובץ ה-Word בענן";
       }
 
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 4000);
+      if (wordUploadError) {
+        setSaveStatus("partial");
+        setSaveError(`השינויים נשמרו, אך קובץ ה-Word לא עודכן: ${wordUploadError}`);
+        setTimeout(() => setSaveStatus("idle"), 8000);
+      } else {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 4000);
+      }
     } catch (err) {
       setSaveStatus("error");
       setSaveError(err instanceof Error ? err.message : "שגיאה בשמירת השינויים");
@@ -375,7 +388,13 @@ export default function AdminProjectViewPage() {
             {saveStatus === "saved" && (
               <span className="flex items-center gap-1.5 text-emerald-600 font-medium animate-fade-in">
                 <CheckCircle size={15} />
-                השינויים נשמרו בהצלחה
+                השינויים נשמרו וקובץ ה-Word עודכן
+              </span>
+            )}
+            {saveStatus === "partial" && (
+              <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+                <AlertCircle size={15} />
+                {saveError}
               </span>
             )}
             {saveStatus === "error" && (
@@ -384,9 +403,14 @@ export default function AdminProjectViewPage() {
                 {saveError}
               </span>
             )}
+            {saving && (
+              <span className="text-slate-500">
+                שומר את האפיון ומעדכן את קובץ ה-Word בענן...
+              </span>
+            )}
             {saveStatus === "idle" && !saving && (
               <span className="text-slate-500">
-                שינויים ישמרו למסד הנתונים ולקובץ Word בענן
+                שמירה תעדכן את האפיון ואת קובץ ה-Word האחרון בענן
               </span>
             )}
           </div>

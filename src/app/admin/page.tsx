@@ -373,7 +373,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-5 py-4 text-left">
                         <Link
-                          href={`/admin/project/${project.projectId}`}
+                          href={`/admin/project/${project.projectId}/view`}
                           className="inline-flex items-center gap-1.5 rounded-xl bg-[#5B4FE8] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4A3ED6] hover:shadow-md"
                         >
                           פתח אפיון

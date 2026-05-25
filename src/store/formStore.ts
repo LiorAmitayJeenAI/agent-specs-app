@@ -95,6 +95,7 @@ export interface AdminProjectData {
   authorName: string;
   authorDepartment: string | null;
   authorPosition: string | null;
+  status?: string | null;
   agentName: string;
   agentDescription: string;
   useCases: {
@@ -112,9 +113,12 @@ export interface AdminProjectData {
   metrics: { id: string; name: string; target: string | null; measurementMethod: string | null; priority: string }[];
 }
 
+export type ProjectStatus = "client_draft" | "pm_review" | "completed";
+
 type FormSnapshot = {
   isLoginComplete: boolean;
   isAdminView: boolean;
+  projectStatus: ProjectStatus;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
   currentStep: number;
@@ -132,6 +136,7 @@ let _backup: FormSnapshot | null = null;
 interface FormStore {
   isLoginComplete: boolean;
   isAdminView: boolean;
+  projectStatus: ProjectStatus;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
   currentStep: number;
@@ -151,6 +156,7 @@ interface FormStore {
   resetForm: () => void;
 
   // Admin project hydration
+  setProjectStatus: (status: ProjectStatus) => void;
   hydrateFromProject: (data: AdminProjectData) => void;
   backupState: () => void;
   restoreBackup: () => void;
@@ -207,6 +213,7 @@ interface FormStore {
 const initialFormState = {
   isLoginComplete: false,
   isAdminView: false,
+  projectStatus: "client_draft" as ProjectStatus,
   projectIntake: {
     clientName: "",
     documentAuthorName: "",
@@ -262,6 +269,7 @@ export const useFormStore = create<FormStore>()(
     _backup = {
       isLoginComplete: s.isLoginComplete,
       isAdminView: s.isAdminView,
+      projectStatus: s.projectStatus,
       projectIntake: s.projectIntake,
       agentDetails: s.agentDetails,
       currentStep: s.currentStep,
@@ -280,10 +288,17 @@ export const useFormStore = create<FormStore>()(
     }
   },
 
+  setProjectStatus: (status) => set({ projectStatus: status }),
+
   hydrateFromProject: (data: AdminProjectData) => {
+    const normalizedStatus: ProjectStatus =
+      data.status === "pm_review" || data.status === "completed"
+        ? data.status
+        : "client_draft";
     set({
       isLoginComplete: true,
       isAdminView: true,
+      projectStatus: normalizedStatus,
       projectIntake: {
         clientName: data.clientName,
         documentAuthorName: data.authorName,

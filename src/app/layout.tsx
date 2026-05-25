@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "אפיון סוכן AI | מערכת לאיסוף דרישות",
   description: "מערכת מובנית לאפיון תהליכים עסקיים לבניית סוכני AI",
+  icons: {
+    icon: "/symbolJEEN_logo.png",
+  },
 };
 
 export default function RootLayout({

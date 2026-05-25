@@ -80,6 +80,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let overrideBlobPath: string | undefined;
+
+    if (isSummary && projectId) {
+      const existingFile = await prisma.file.findFirst({
+        where: {
+          related_entity_type: "summary",
+          related_entity_id: projectId,
+          field_name: fieldName || null,
+        },
+        select: { blob_url: true },
+        orderBy: { uploaded_at: "desc" },
+      });
+
+      if (existingFile) {
+        overrideBlobPath = existingFile.blob_url;
+      }
+    }
+
     const result = await uploadFileToBlob({
       buffer,
       originalFileName: file.name,
@@ -91,20 +109,45 @@ export async function POST(request: NextRequest) {
       clientName,
       requestedAgentName,
       documentAuthorName,
+      overrideBlobPath,
     });
 
-    const savedFile = await prisma.file.create({
-      data: {
-        related_entity_type: isSummary ? "summary" : "upload",
-        related_entity_id: projectId || "draft",
-        file_name: result.fileName,
-        file_type: result.mimeType,
-        blob_url: result.blobPath,
-        size: result.size,
-        step_id: stepId || null,
-        field_name: fieldName || null,
-      },
-    });
+    const relatedEntityType = isSummary ? "summary" : "upload";
+    const relatedEntityId = projectId || "draft";
+    const fileData = {
+      related_entity_type: relatedEntityType,
+      related_entity_id: relatedEntityId,
+      file_name: result.fileName,
+      file_type: result.mimeType,
+      blob_url: result.blobPath,
+      size: result.size,
+      step_id: stepId || null,
+      field_name: fieldName || null,
+    };
+
+    let savedFile;
+
+    if (isSummary && projectId) {
+      const existing = await prisma.file.findFirst({
+        where: {
+          related_entity_type: "summary",
+          related_entity_id: projectId,
+          field_name: fieldName || null,
+        },
+        orderBy: { uploaded_at: "desc" },
+      });
+
+      if (existing) {
+        savedFile = await prisma.file.update({
+          where: { file_id: existing.file_id },
+          data: { ...fileData, uploaded_at: new Date() },
+        });
+      } else {
+        savedFile = await prisma.file.create({ data: fileData });
+      }
+    } else {
+      savedFile = await prisma.file.create({ data: fileData });
+    }
 
     return NextResponse.json({
       fileId: savedFile.file_id,

@@ -35,10 +35,6 @@ function sanitizeFileName(name: string): string {
     .slice(0, 200);
 }
 
-function createFileTimestamp(): string {
-  return new Date().toISOString().replace(/[:.]/g, "-");
-}
-
 function sanitizeAsciiHeaderFileName(name: string): string {
   return name
     .normalize("NFKD")
@@ -84,7 +80,7 @@ function buildBlobPath(params: {
     const safeAgentName = sanitizeFileName(requestedAgentName || "unknown-agent");
     const safeAuthorName = sanitizeFileName(documentAuthorName || "unknown-author");
     const summaryRoot = basePath || "lior/";
-    const summaryFileName = `${safeAgentName}-${safeAuthorName}-${createFileTimestamp()}.docx`;
+    const summaryFileName = `${safeAgentName}-${safeAuthorName}.docx`;
 
     return `${summaryRoot}${safeClientName}/${safeAgentName}/${summaryFileName}`;
   }
@@ -105,6 +101,7 @@ export interface UploadFileToBlobParams {
   clientName?: string;
   requestedAgentName?: string;
   documentAuthorName?: string;
+  overrideBlobPath?: string;
 }
 
 export interface UploadFileToBlobResult {
@@ -129,9 +126,10 @@ export async function uploadFileToBlob(
     clientName,
     requestedAgentName,
     documentAuthorName,
+    overrideBlobPath,
   } = params;
 
-  const blobPath = buildBlobPath({
+  const blobPath = overrideBlobPath || buildBlobPath({
     projectId,
     stepId,
     fieldName,
