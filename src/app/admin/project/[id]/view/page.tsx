@@ -348,14 +348,8 @@ export default function AdminProjectViewPage() {
       <Sidebar />
 
       <main className="flex-1 overflow-y-auto pb-20">
-        <img
-          src="/JEEN_logo.png"
-          alt="Jeen"
-          className="fixed -top-4 left-4 h-[8.5rem] w-auto z-10"
-        />
-
         {/* Admin navigation bar */}
-        <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-[#EEEEEE] bg-white/90 backdrop-blur px-6 py-2.5">
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#EEEEEE] bg-white/90 backdrop-blur px-6 py-2.5">
           <Button
             variant="ghost"
             size="sm"
@@ -365,15 +359,11 @@ export default function AdminProjectViewPage() {
             <ArrowRight size={15} />
             חזרה ללוח הניהול
           </Button>
-          <div className="h-4 w-px bg-slate-200" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/admin/project/${projectId}`)}
-            className="gap-1.5"
-          >
-            מעבר לעריכת האפיון
-          </Button>
+          <img
+            src="/JEEN_logo.png"
+            alt="Jeen"
+            className="h-20 -my-5 w-auto"
+          />
         </div>
 
         <div className="max-w-4xl mx-auto px-6 py-10 lg:py-12">
@@ -383,8 +373,21 @@ export default function AdminProjectViewPage() {
 
       {/* Floating save bar */}
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#EEEEEE] bg-white/95 backdrop-blur shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-8 py-3">
-          <div className="flex items-center gap-2 text-sm">
+        <div dir="ltr" className="flex items-center gap-4 px-8 py-3">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="sm"
+            className="gap-2 min-w-[140px]"
+          >
+            {saving ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Save size={15} />
+            )}
+            {saving ? "שומר..." : "שמור שינויים"}
+          </Button>
+          <div dir="rtl" className="flex items-center gap-2 text-sm">
             {saveStatus === "saved" && (
               <span className="flex items-center gap-1.5 text-emerald-600 font-medium animate-fade-in">
                 <CheckCircle size={15} />
@@ -414,19 +417,6 @@ export default function AdminProjectViewPage() {
               </span>
             )}
           </div>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            size="sm"
-            className="gap-2 min-w-[140px]"
-          >
-            {saving ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <Save size={15} />
-            )}
-            {saving ? "שומר..." : "שמור שינויים"}
-          </Button>
         </div>
       </div>
     </div>

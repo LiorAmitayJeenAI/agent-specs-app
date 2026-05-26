@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAdminStore } from "@/store/adminStore";
+import { useFormStore } from "@/store/formStore";
 
 interface ProjectSummary {
   projectId: string;
@@ -80,6 +81,7 @@ function formatRelativeDate(dateStr: string): string {
 export default function AdminDashboard() {
   const router = useRouter();
   const { adminRole } = useAdminStore();
+  const resetForm = useFormStore((state) => state.resetForm);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -129,6 +131,11 @@ export default function AdminDashboard() {
   const pmReviewCount = projects.filter(
     (p) => normalizeProjectStatus(p.status) === "pm_review"
   ).length;
+
+  const handleCreateNewProject = () => {
+    resetForm();
+    router.push("/");
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F7FB]">
@@ -266,7 +273,7 @@ export default function AdminDashboard() {
           </div>
 
           <button
-            onClick={() => router.push("/")}
+            onClick={handleCreateNewProject}
             className="mr-auto inline-flex items-center gap-2 rounded-xl bg-[#5B4FE8] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4A3ED6] hover:shadow-md"
           >
             <Plus size={16} />
