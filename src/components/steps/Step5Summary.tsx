@@ -77,8 +77,9 @@ const CUSTOMER_OPTIONS = [
 ];
 
 const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
+  { value: "sent_to_client", label: "נשלח ללקוח" },
   { value: "client_draft", label: "טיוטת לקוח" },
-  { value: "pm_review", label: "בבדיקת מנהל פרויקט" },
+  { value: "pm_review", label: "בטיפול מנהל פרויקט" },
   { value: "completed", label: "הושלם" },
 ];
 

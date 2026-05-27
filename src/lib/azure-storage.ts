@@ -26,7 +26,7 @@ function getContainerClient(): ContainerClient {
   return blobServiceClient.getContainerClient(containerName!);
 }
 
-function sanitizeFileName(name: string): string {
+export function sanitizeFileName(name: string): string {
   return name
     .replace(/[^\w\u0590-\u05FF\u0600-\u06FF.\-_ ]/g, "_")
     .replace(/\s+/g, "_")
@@ -199,6 +199,28 @@ export async function copyBlobInContainer(
     blobPath: destinationBlobPath,
     blobUrl: destBlockBlob.url,
   };
+}
+
+export async function deleteBlobByPath(blobPath: string): Promise<void> {
+  if (blobPath.includes("..") || blobPath.startsWith("/")) {
+    throw new Error("Invalid blob path");
+  }
+  const containerClient = getContainerClient();
+  const blobClient = containerClient.getBlobClient(blobPath);
+  await blobClient.deleteIfExists();
+}
+
+export async function deleteBlobsByPrefix(prefix: string): Promise<number> {
+  if (prefix.includes("..") || prefix.startsWith("/")) {
+    throw new Error("Invalid blob prefix");
+  }
+  const containerClient = getContainerClient();
+  let count = 0;
+  for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+    await containerClient.getBlobClient(blob.name).deleteIfExists();
+    count++;
+  }
+  return count;
 }
 
 export async function getBlobStream(blobPath: string) {

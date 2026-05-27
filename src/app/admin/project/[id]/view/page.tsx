@@ -337,7 +337,7 @@ export default function AdminProjectViewPage() {
         <div className="text-center">
           <AlertCircle size={40} className="mx-auto mb-3 text-red-400" />
           <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => router.push("/admin")}>חזרה ללוח הניהול</Button>
+          <Button onClick={() => router.push("/")}>חזרה ללוח הניהול</Button>
         </div>
       </div>
     );
@@ -353,7 +353,7 @@ export default function AdminProjectViewPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push("/")}
             className="gap-1.5"
           >
             <ArrowRight size={15} />

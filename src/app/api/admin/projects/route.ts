@@ -1,6 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+interface CreateProjectStubBody {
+  clientName: string;
+  projectManagerName: string;
+  projectName: string;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: CreateProjectStubBody = await request.json();
+
+    if (!body.clientName?.trim()) {
+      return NextResponse.json(
+        { error: "שם לקוח הוא שדה חובה" },
+        { status: 400 }
+      );
+    }
+
+    const client =
+      (await prisma.client.findFirst({
+        where: { client_name: body.clientName.trim() },
+        select: { client_id: true },
+      })) ??
+      (await prisma.client.create({
+        data: { client_name: body.clientName.trim() },
+        select: { client_id: true },
+      }));
+
+    const project = await prisma.project.create({
+      data: {
+        client_id: client.client_id,
+        project_name: body.projectName?.trim() || "",
+        project_manager_name: body.projectManagerName?.trim() || null,
+        document_author_name: "",
+        requested_agent_name: "",
+        short_agent_description: "",
+        status: "sent_to_client",
+      },
+      select: { project_id: true },
+    });
+
+    return NextResponse.json({ projectId: project.project_id });
+  } catch (error) {
+    console.error("Create project stub error:", error);
+    return NextResponse.json(
+      { error: "שגיאה ביצירת הפרויקט" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(_request: NextRequest) {
   try {
     const projects = await prisma.project.findMany({
@@ -18,6 +68,7 @@ export async function GET(_request: NextRequest) {
       projectId: p.project_id,
       clientName: p.client.client_name,
       projectName: p.project_name,
+      projectManagerName: p.project_manager_name,
       agentName: p.requested_agent_name,
       authorName: p.document_author_name,
       authorDepartment: p.author_department,

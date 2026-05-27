@@ -113,11 +113,16 @@ export interface AdminProjectData {
   metrics: { id: string; name: string; target: string | null; measurementMethod: string | null; priority: string }[];
 }
 
-export type ProjectStatus = "client_draft" | "pm_review" | "completed";
+export type ProjectStatus =
+  | "sent_to_client"
+  | "client_draft"
+  | "pm_review"
+  | "completed";
 
 type FormSnapshot = {
   isLoginComplete: boolean;
   isAdminView: boolean;
+  projectId: string | null;
   projectStatus: ProjectStatus;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
@@ -136,6 +141,7 @@ let _backup: FormSnapshot | null = null;
 interface FormStore {
   isLoginComplete: boolean;
   isAdminView: boolean;
+  projectId: string | null;
   projectStatus: ProjectStatus;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
@@ -147,6 +153,7 @@ interface FormStore {
   successMetrics: SuccessMetric[];
 
   // Navigation
+  setProjectId: (id: string | null) => void;
   completeLogin: () => void;
   updateProjectIntake: (patch: Partial<ProjectIntake>) => void;
   updateAgentDetails: (patch: Partial<AgentDetails>) => void;
@@ -213,7 +220,8 @@ interface FormStore {
 const initialFormState = {
   isLoginComplete: false,
   isAdminView: false,
-  projectStatus: "client_draft" as ProjectStatus,
+  projectId: null as string | null,
+  projectStatus: "sent_to_client" as ProjectStatus,
   projectIntake: {
     clientName: "",
     documentAuthorName: "",
@@ -237,6 +245,7 @@ export const useFormStore = create<FormStore>()(
     (set, get) => ({
   ...initialFormState,
 
+  setProjectId: (id) => set({ projectId: id }),
   completeLogin: () => set({ isLoginComplete: true }),
   updateProjectIntake: (patch) =>
     set((s) => ({ projectIntake: { ...s.projectIntake, ...patch } })),
@@ -269,6 +278,7 @@ export const useFormStore = create<FormStore>()(
     _backup = {
       isLoginComplete: s.isLoginComplete,
       isAdminView: s.isAdminView,
+      projectId: s.projectId,
       projectStatus: s.projectStatus,
       projectIntake: s.projectIntake,
       agentDetails: s.agentDetails,
@@ -292,9 +302,12 @@ export const useFormStore = create<FormStore>()(
 
   hydrateFromProject: (data: AdminProjectData) => {
     const normalizedStatus: ProjectStatus =
-      data.status === "pm_review" || data.status === "completed"
+      data.status === "sent_to_client" ||
+      data.status === "client_draft" ||
+      data.status === "pm_review" ||
+      data.status === "completed"
         ? data.status
-        : "client_draft";
+        : "sent_to_client";
     set({
       isLoginComplete: true,
       isAdminView: true,
@@ -306,7 +319,7 @@ export const useFormStore = create<FormStore>()(
         position: data.authorPosition ?? "",
       },
       agentDetails: {
-        requestedAgentName: data.agentName,
+        requestedAgentName: data.agentName || data.projectName,
         shortAgentDescription: data.agentDescription,
       },
       currentStep: 1,
@@ -603,7 +616,7 @@ export const useFormStore = create<FormStore>()(
   // ── Output ───────────────────────────────────────────────────────────────────
 
   getOutput: () => {
-    const { projectIntake, agentDetails, useCases, dataSources, concepts, successMetrics } = get();
+    const { projectId, projectIntake, agentDetails, useCases, dataSources, concepts, successMetrics } = get();
 
     const uploadedFiles: UploadedFileRef[] = [];
     for (const uc of useCases) {
@@ -640,6 +653,7 @@ export const useFormStore = create<FormStore>()(
     }
 
     return {
+      projectId: projectId ?? undefined,
       projectIntake,
       agentDetails,
       useCases,
@@ -657,6 +671,7 @@ export const useFormStore = create<FormStore>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         isLoginComplete: state.isLoginComplete,
+        projectId: state.projectId,
         projectIntake: state.projectIntake,
         agentDetails: state.agentDetails,
         currentStep: state.currentStep,

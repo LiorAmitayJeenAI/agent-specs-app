@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -8,6 +8,7 @@ import {
   Briefcase,
   Clock,
   Database,
+  Loader2,
   Lock,
   MessageCircle,
   Network,
@@ -39,8 +40,46 @@ const STEP_COLORS = [
 ];
 const jeenAssistedStepIds = new Set(LOCKED_FORM_STEP_IDS);
 
-export default function LoginPage() {
-  const { projectIntake, updateProjectIntake, completeLogin } = useFormStore();
+interface LoginPageProps {
+  projectId?: string;
+}
+
+export default function LoginPage({ projectId }: LoginPageProps) {
+  const { projectIntake, updateProjectIntake, updateAgentDetails, completeLogin, setProjectId } = useFormStore();
+  const [loadingProject, setLoadingProject] = useState(!!projectId);
+  const [projectError, setProjectError] = useState("");
+  const [clientLocked, setClientLocked] = useState(false);
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/projects/${projectId}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (cancelled) return;
+
+        updateProjectIntake({ clientName: data.clientName });
+        const projectName = typeof data.projectName === "string" ? data.projectName.trim() : "";
+        const currentAgentName = useFormStore.getState().agentDetails.requestedAgentName.trim();
+        if (projectName && !currentAgentName) {
+          updateAgentDetails({ requestedAgentName: projectName });
+        }
+        setProjectId(projectId);
+        setClientLocked(true);
+      } catch {
+        if (!cancelled) setProjectError("שגיאה בטעינת פרטי הפרויקט");
+      } finally {
+        if (!cancelled) setLoadingProject(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
   const canContinue =
     CUSTOMER_OPTIONS.includes(projectIntake.clientName) &&
     projectIntake.documentAuthorName.trim().length > 0;
@@ -49,6 +88,14 @@ export default function LoginPage() {
     event.preventDefault();
     if (canContinue) completeLogin();
   };
+
+  if (loadingProject) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-[#F7F7FB]">
+        <Loader2 size={32} className="animate-spin text-indigo-500" />
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,#EEE9FF_0,#F7F7FB_34%,#F7F7FB_100%)] px-5 py-8">
@@ -156,6 +203,10 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {projectError && (
+            <p className="text-sm text-red-600 font-medium text-center">{projectError}</p>
+          )}
+
           <section className="rounded-3xl border border-[#EEEEEE] bg-white px-5 py-5 shadow-sm">
             <div className="mb-5 text-right">
               <h2 className="text-base font-bold text-[#1A1A2E]">פרטי ממלא האפיון</h2>
@@ -176,8 +227,9 @@ export default function LoginPage() {
                   onChange={(event) =>
                     updateProjectIntake({ clientName: event.target.value })
                   }
+                  disabled={clientLocked}
                   className="flex w-full rounded-lg border border-[#E0E0E0] bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] shadow-sm transition duration-150 focus:outline-none focus:border-[#5B4FE8] focus:shadow-[0_0_0_3px_rgba(91,79,232,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-                  autoFocus
+                  autoFocus={!clientLocked}
                 >
                   <option value="">בחר לקוח...</option>
                   {CUSTOMER_OPTIONS.map((customer) => (
@@ -202,6 +254,7 @@ export default function LoginPage() {
                     updateProjectIntake({ documentAuthorName: event.target.value })
                   }
                   placeholder='לדוגמה: "ישראל לוי"'
+                  autoFocus={clientLocked}
                 />
               </div>
 

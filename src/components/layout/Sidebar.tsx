@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Dot, RotateCcw } from "lucide-react";
+import { CheckCircle, Dot, Lock, RotateCcw } from "lucide-react";
 import { useFormStore } from "@/store/formStore";
 import { LOCKED_FORM_STEP_IDS, STEP_CONFIGS } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -121,7 +121,7 @@ export default function Sidebar() {
                     "w-full text-right flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-150 cursor-pointer",
                     isActive && "bg-[#EEE9FF] ring-1 ring-[#C4B8FF]/50",
                     !isActive && !isLocked && "hover:bg-[#F8F8FC]",
-                    isLocked && "cursor-not-allowed opacity-45"
+                    isLocked && "cursor-not-allowed bg-slate-50/70"
                   )}
                 >
                   {/* Step indicator */}
@@ -138,6 +138,10 @@ export default function Sidebar() {
                         style={{ backgroundColor: badge.bg }}
                       >
                         <span className="text-xs font-bold" style={{ color: badge.text }}>{step.id}</span>
+                      </div>
+                    ) : isLocked ? (
+                      <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center bg-slate-200 text-slate-500">
+                        <Lock size={12} strokeWidth={2.2} />
                       </div>
                     ) : (
                       <div
@@ -171,9 +175,10 @@ export default function Sidebar() {
                       {step.subtitle}
                     </p>
                     {isLocked && (
-                      <p className="mt-0.5 text-[11px] leading-snug text-[#AAAACC]">
-                        שלב זה יבוצע יחד עם מנהל הפרויקט
-                      </p>
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold leading-snug text-slate-500">
+                        <Lock size={10} />
+                        ימולא יחד עם Jeen
+                      </span>
                     )}
                   </div>
 

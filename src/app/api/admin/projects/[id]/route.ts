@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { deleteBlobByPath, deleteBlobsByPrefix, sanitizeFileName } from "@/lib/azure-storage";
 
 interface AdminProjectPayload {
   clientName: string;
@@ -48,9 +49,14 @@ interface AdminProjectPayload {
   }[];
 }
 
-type ProjectStatus = "client_draft" | "pm_review" | "completed";
+type ProjectStatus =
+  | "sent_to_client"
+  | "client_draft"
+  | "pm_review"
+  | "completed";
 
 const PROJECT_STATUSES: ProjectStatus[] = [
+  "sent_to_client",
   "client_draft",
   "pm_review",
   "completed",
@@ -96,6 +102,7 @@ export async function GET(
       projectId: project.project_id,
       clientName: project.client.client_name,
       projectName: project.project_name,
+      projectManagerName: project.project_manager_name,
       authorName: project.document_author_name,
       authorDepartment: project.author_department,
       authorPosition: project.author_position,
@@ -345,6 +352,84 @@ export async function PUT(
     console.error("Admin update project detail error:", error);
     return NextResponse.json(
       { error: "שגיאה בעדכון הפרויקט" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: projectId } = await params;
+
+  try {
+    const project = await prisma.project.findUnique({
+      where: { project_id: projectId },
+      include: { client: { select: { client_name: true } } },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "הפרויקט לא נמצא" }, { status: 404 });
+    }
+
+    // Delete blobs from Azure
+    const files = await prisma.file.findMany({
+      where: { related_entity_id: projectId },
+      select: { blob_url: true },
+    });
+
+    const blobDeletions: Promise<void>[] = files
+      .filter((f) => f.blob_url)
+      .map((f) => deleteBlobByPath(f.blob_url).catch((err) => {
+        console.error(`Failed to delete blob ${f.blob_url}:`, err);
+      }));
+
+    const folderName = process.env.AZURE_STORAGE_FOLDER_NAME;
+
+    // Delete uploads folder: {folder}/inquiries/{projectId}/
+    const uploadsPrefix = folderName
+      ? `${folderName}/inquiries/${projectId}/`
+      : `inquiries/${projectId}/`;
+    blobDeletions.push(
+      deleteBlobsByPrefix(uploadsPrefix).catch((err) => {
+        console.error(`Failed to delete blobs by prefix ${uploadsPrefix}:`, err);
+      }) as Promise<void>
+    );
+
+    // Delete summary folder: {folder}/{clientName}/{agentName}/
+    if (project.client.client_name && project.requested_agent_name) {
+      const safeClientName = sanitizeFileName(project.client.client_name);
+      const safeAgentName = sanitizeFileName(project.requested_agent_name);
+      const summaryRoot = folderName ? `${folderName}/` : "lior/";
+      const summaryPrefix = `${summaryRoot}${safeClientName}/${safeAgentName}/`;
+      blobDeletions.push(
+        deleteBlobsByPrefix(summaryPrefix).catch((err) => {
+          console.error(`Failed to delete summary folder ${summaryPrefix}:`, err);
+        }) as Promise<void>
+      );
+    }
+
+    await Promise.all(blobDeletions);
+
+    // Delete all DB records in a transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.file.deleteMany({ where: { related_entity_id: projectId } });
+      await tx.requirementDocument.deleteMany({ where: { project_id: projectId } });
+      await tx.successMetric.deleteMany({ where: { project_id: projectId } });
+      await tx.flowStep.deleteMany({ where: { use_case: { project_id: projectId } } });
+      await tx.useCaseQAPair.deleteMany({ where: { use_case: { project_id: projectId } } });
+      await tx.useCase.deleteMany({ where: { project_id: projectId } });
+      await tx.dataSource.deleteMany({ where: { project_id: projectId } });
+      await tx.glossaryTerm.deleteMany({ where: { project_id: projectId } });
+      await tx.project.delete({ where: { project_id: projectId } });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Admin delete project error:", error);
+    return NextResponse.json(
+      { error: "שגיאה במחיקת הפרויקט" },
       { status: 500 }
     );
   }

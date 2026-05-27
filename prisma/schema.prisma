@@ -22,9 +22,10 @@ model Project {
   document_author_name    String
   author_department       String?
   author_position         String?
+  project_manager_name    String?
   requested_agent_name    String
   short_agent_description String
-  status                  ProjectStatus         @default(client_draft)
+  status                  ProjectStatus         @default(sent_to_client)
   created_at              DateTime              @default(now())
   updated_at              DateTime              @updatedAt
   client                  Client                @relation(fields: [client_id], references: [client_id])
@@ -36,6 +37,7 @@ model Project {
 }
 
 enum ProjectStatus {
+  sent_to_client
   client_draft
   pm_review
   completed

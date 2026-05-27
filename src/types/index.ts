@@ -134,6 +134,7 @@ export interface UploadedFileRef {
 // ─── Full Form Output ──────────────────────────────────────────────────────────
 
 export interface FormOutput {
+  projectId?: string;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
   useCases: UseCase[];
