@@ -5,25 +5,38 @@ import {
   type BlockBlobUploadOptions,
 } from "@azure/storage-blob";
 
-const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
-const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
-const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME;
-const folderName = process.env.AZURE_STORAGE_FOLDER_NAME;
+let _blobServiceClient: BlobServiceClient | null = null;
 
-if (!accountName || !accountKey || !containerName) {
-  throw new Error(
-    "Missing Azure Storage configuration. Set AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCOUNT_KEY, and AZURE_STORAGE_CONTAINER_NAME."
-  );
+function getConfig() {
+  const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+  const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
+  const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME;
+  const folderName = process.env.AZURE_STORAGE_FOLDER_NAME;
+
+  if (!accountName || !accountKey || !containerName) {
+    throw new Error(
+      "Missing Azure Storage configuration. Set AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCOUNT_KEY, and AZURE_STORAGE_CONTAINER_NAME."
+    );
+  }
+
+  return { accountName, accountKey, containerName, folderName };
 }
 
-const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
-const blobServiceClient = new BlobServiceClient(
-  `https://${accountName}.blob.core.windows.net`,
-  sharedKeyCredential
-);
+function getBlobServiceClient(): BlobServiceClient {
+  if (!_blobServiceClient) {
+    const { accountName, accountKey } = getConfig();
+    const cred = new StorageSharedKeyCredential(accountName, accountKey);
+    _blobServiceClient = new BlobServiceClient(
+      `https://${accountName}.blob.core.windows.net`,
+      cred
+    );
+  }
+  return _blobServiceClient;
+}
 
 function getContainerClient(): ContainerClient {
-  return blobServiceClient.getContainerClient(containerName!);
+  const { containerName } = getConfig();
+  return getBlobServiceClient().getContainerClient(containerName);
 }
 
 export function sanitizeFileName(name: string): string {
@@ -73,6 +86,7 @@ function buildBlobPath(params: {
   const timestamp = Date.now();
   const safe = sanitizeFileName(fileName);
 
+  const { folderName } = getConfig();
   const basePath = folderName ? `${folderName}/` : "";
 
   if (isSummary) {
