@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Save,
   CheckCircle,
+  Menu,
 } from "lucide-react";
 import { useFormStore, type AdminProjectData } from "@/store/formStore";
 import {
@@ -321,6 +322,8 @@ export default function AdminProjectViewPage() {
     }
   }, [projectId]);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const StepComponent = STEP_COMPONENTS[currentStep] ?? StepAgentDetails;
 
   if (loading) {
@@ -345,40 +348,50 @@ export default function AdminProjectViewPage() {
 
   return (
     <div className="flex min-h-screen bg-[#F7F7FB]">
-      <Sidebar />
+      <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
       <main className="flex-1 overflow-y-auto pb-20">
         {/* Admin navigation bar */}
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#EEEEEE] bg-white/90 backdrop-blur px-6 py-2.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/")}
-            className="gap-1.5"
-          >
-            <ArrowRight size={15} />
-            חזרה ללוח הניהול
-          </Button>
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#EEEEEE] bg-white/90 backdrop-blur px-4 sm:px-6 py-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+              aria-label="פתח תפריט"
+            >
+              <Menu size={20} />
+            </button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/")}
+              className="gap-1.5 min-h-[40px] sm:min-h-0"
+            >
+              <ArrowRight size={15} />
+              <span className="hidden sm:inline">חזרה ללוח הניהול</span>
+              <span className="sm:hidden">חזרה</span>
+            </Button>
+          </div>
           <img
             src="/JEEN_logo.png"
             alt="Jeen"
-            className="h-20 -my-5 w-auto"
+            className="h-12 sm:h-20 sm:-my-5 w-auto"
           />
         </div>
 
-        <div className="max-w-4xl mx-auto px-6 py-10 lg:py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 md:py-10 lg:py-12">
           <StepComponent />
         </div>
       </main>
 
       {/* Floating save bar */}
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#EEEEEE] bg-white/95 backdrop-blur shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div dir="ltr" className="flex items-center gap-4 px-8 py-3">
+        <div dir="ltr" className="flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-8 py-3">
           <Button
             onClick={handleSave}
             disabled={saving}
             size="sm"
-            className="gap-2 min-w-[140px]"
+            className="gap-2 min-w-[120px] sm:min-w-[140px]"
           >
             {saving ? (
               <Loader2 size={15} className="animate-spin" />
@@ -387,32 +400,33 @@ export default function AdminProjectViewPage() {
             )}
             {saving ? "שומר..." : "שמור שינויים"}
           </Button>
-          <div dir="rtl" className="flex items-center gap-2 text-sm">
+          <div dir="rtl" className="flex items-center gap-2 text-sm min-w-0">
             {saveStatus === "saved" && (
               <span className="flex items-center gap-1.5 text-emerald-600 font-medium animate-fade-in">
-                <CheckCircle size={15} />
-                השינויים נשמרו וקובץ ה-Word עודכן
+                <CheckCircle size={15} className="shrink-0" />
+                <span className="hidden sm:inline">השינויים נשמרו וקובץ ה-Word עודכן</span>
+                <span className="sm:hidden">נשמר</span>
               </span>
             )}
             {saveStatus === "partial" && (
               <span className="flex items-center gap-1.5 text-amber-600 font-medium">
-                <AlertCircle size={15} />
-                {saveError}
+                <AlertCircle size={15} className="shrink-0" />
+                <span className="truncate">{saveError}</span>
               </span>
             )}
             {saveStatus === "error" && (
               <span className="flex items-center gap-1.5 text-red-600 font-medium">
-                <AlertCircle size={15} />
-                {saveError}
+                <AlertCircle size={15} className="shrink-0" />
+                <span className="truncate">{saveError}</span>
               </span>
             )}
             {saving && (
-              <span className="text-slate-500">
+              <span className="text-slate-500 hidden sm:inline">
                 שומר את האפיון ומעדכן את קובץ ה-Word בענן...
               </span>
             )}
             {saveStatus === "idle" && !saving && (
-              <span className="text-slate-500">
+              <span className="text-slate-500 hidden sm:inline">
                 שמירה תעדכן את האפיון ואת קובץ ה-Word האחרון בענן
               </span>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle, Dot, Lock, RotateCcw } from "lucide-react";
+import { useEffect } from "react";
+import { CheckCircle, Dot, Lock, RotateCcw, X } from "lucide-react";
 import { useFormStore } from "@/store/formStore";
 import { LOCKED_FORM_STEP_IDS, STEP_CONFIGS } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,12 @@ const STEP_BADGES = [
 const hasText = (value: string) => value.trim().length > 0;
 const lockedStepIds = new Set(LOCKED_FORM_STEP_IDS);
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const {
     currentStep,
     isAdminView,
@@ -32,9 +38,16 @@ export default function Sidebar() {
   } = useFormStore();
   const totalSteps = STEP_CONFIGS.length;
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
   const handleStepClick = (stepId: number) => {
     if (!isAdminView && lockedStepIds.has(stepId)) return;
     goToStep(stepId);
+    onMobileClose?.();
   };
 
   const isStepComplete = (stepId: number) => {
@@ -83,18 +96,27 @@ export default function Sidebar() {
     if (shouldReset) resetForm();
   };
 
-  return (
-    <aside className="w-72 shrink-0 bg-[#FFFFFF] text-[#1A1A2E] border-l border-[#EEEEEE] min-h-screen flex flex-col sticky top-0 h-screen overflow-y-auto shadow-[2px_0_8px_rgba(0,0,0,0.05)]">
+  const sidebarContent = (
+    <>
       {/* Logo / Brand */}
       <div className="px-6 py-6 border-b border-[#EEEEEE] bg-[#F8F8FC]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-[#EEE9FF] flex items-center justify-center shrink-0 ring-1 ring-[#C4B8FF]/50">
             <span className="text-[#5B4FE8] font-bold text-sm">AI</span>
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-[#1A1A2E] font-semibold text-sm leading-tight">אפיון סוכן AI</p>
             <p className="text-[#6B6B8A] text-xs mt-0.5">מדריך שלב-אחר-שלב</p>
           </div>
+          {onMobileClose && (
+            <button
+              onClick={onMobileClose}
+              className="md:hidden flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              aria-label="סגור תפריט"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -233,6 +255,28 @@ export default function Sidebar() {
           התחל מחדש
         </Button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-72 shrink-0 bg-[#FFFFFF] text-[#1A1A2E] border-l border-[#EEEEEE] min-h-screen flex-col sticky top-0 h-screen overflow-y-auto shadow-[2px_0_8px_rgba(0,0,0,0.05)]">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={onMobileClose}
+          />
+          <aside className="absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-[#FFFFFF] text-[#1A1A2E] border-l border-[#EEEEEE] flex flex-col overflow-y-auto shadow-[2px_0_8px_rgba(0,0,0,0.05)] animate-slide-in">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

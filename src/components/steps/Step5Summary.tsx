@@ -626,7 +626,7 @@ export default function Step5Summary() {
 
       {/* Stats */}
       {hasUseCases && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: "תרחישי שימוש", value: useCases.length, color: "text-indigo-600 bg-gradient-to-br from-indigo-50 to-white border-indigo-100" },
             { label: "שלבי תהליך", value: totalFlowSteps, color: "text-violet-600 bg-gradient-to-br from-violet-50 to-white border-violet-100" },
@@ -811,11 +811,11 @@ export default function Step5Summary() {
         </div>
       </section>
 
-      <div className="flex items-center justify-between bg-white border border-[#E0E0E0] rounded-2xl px-4 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.07)]">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white border border-[#E0E0E0] rounded-2xl px-4 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.07)]">
         <p className="text-sm text-slate-600">
           אפשר להוריד את כל האפיון כמסמך Word מסודר.
         </p>
-        <Button size="sm" onClick={handleExportWord}>
+        <Button size="sm" onClick={handleExportWord} className="w-full sm:w-auto shrink-0">
           <span aria-hidden="true">📄</span>
           ייצוא לקובץ 
         </Button>

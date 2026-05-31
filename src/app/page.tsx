@@ -173,10 +173,10 @@ export default function AdminDashboard() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-[#F7F7FB]">
+    <div className="min-h-screen bg-[#F7F7FB] overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-[#EEEEEE] bg-white/80 backdrop-blur">
-        <div className="flex h-16 w-full items-center justify-between px-8">
+        <div className="flex h-16 w-full items-center justify-between px-4 sm:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
               <UserCircle size={22} />
@@ -188,12 +188,12 @@ export default function AdminDashboard() {
           <img
             src="/JEEN_logo.png"
             alt="Jeen"
-            className="h-[7.5rem] w-auto"
+            className="h-12 sm:h-[7.5rem] w-auto"
           />
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-8 py-8">
+      <main className="mx-auto max-w-7xl px-4 sm:px-8 py-6 sm:py-8">
         {/* Page title */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[#1A1A2E]">
@@ -237,7 +237,7 @@ export default function AdminDashboard() {
             <div
               key={stat.label}
               className={cn(
-                "flex items-center gap-4 rounded-2xl border p-5 shadow-sm ring-1",
+                "flex items-center gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-5 shadow-sm ring-1",
                 stat.color
               )}
             >
@@ -253,8 +253,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Filters & Actions */}
-        <div className="mb-6 flex flex-wrap items-center gap-4">
-          <div className="relative max-w-xs flex-1">
+        <div className="mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="relative w-full sm:max-w-xs sm:flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -348,107 +348,163 @@ export default function AdminDashboard() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-[#EEEEEE] bg-white shadow-sm">
-            <table className="w-full min-w-[1120px] text-sm">
-              <thead>
-                <tr className="border-b border-[#F0EFF5] bg-[#FAFAFD]">
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
-                    שם לקוח
-                  </th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
-                    פרויקט / אפיון
-                  </th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
-                    ממלא המסמך
-                  </th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
-                    מנהל הפרויקט
-                  </th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
-                    תאריך יצירה
-                  </th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
-                    עודכן לאחרונה
-                  </th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
-                    סטטוס
-                  </th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-[#6B6B8A]">
-                    <span className="sr-only">פעולות</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((project, idx) => {
-                  const status = normalizeProjectStatus(project.status);
-                  const statusCfg = STATUS_CONFIG[status];
+          <>
+            {/* Mobile card list */}
+            <div className="md:hidden space-y-3">
+              {filtered.map((project) => {
+                const status = normalizeProjectStatus(project.status);
+                const statusCfg = STATUS_CONFIG[status];
 
-                  return (
-                    <tr
-                      key={project.projectId}
-                      className={cn(
-                        "group transition-colors hover:bg-indigo-50/40",
-                        idx < filtered.length - 1 &&
-                          "border-b border-[#F0EFF5]"
-                      )}
-                    >
-                      <td className="px-5 py-4">
-                        <span className="font-semibold text-[#1A1A2E]">
+                return (
+                  <div
+                    key={project.projectId}
+                    className="rounded-2xl border border-[#EEEEEE] bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[#1A1A2E] truncate">
                           {project.clientName}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <FileText
-                            size={14}
-                            className="shrink-0 text-indigo-400"
-                          />
-                          <span className="text-[#1A1A2E]">
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <FileText size={13} className="shrink-0 text-indigo-400" />
+                          <p className="text-sm text-[#4B4B68] truncate">
                             {project.agentName || project.projectName || "טרם הוגדר"}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={statusCfg.variant}>
+                        {statusCfg.label}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-[#6B6B8A] mb-3">
+                      <span>{project.authorName}</span>
+                      <span className="opacity-40">|</span>
+                      <span>{formatRelativeDate(project.updatedAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/project/${project.projectId}/view`}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#5B4FE8] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4A3ED6]"
+                      >
+                        פתח אפיון
+                        <ExternalLink size={13} />
+                      </Link>
+                      <button
+                        onClick={() => setDeleteTarget(project)}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                        title="מחק אפיון"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto rounded-2xl border border-[#EEEEEE] bg-white shadow-sm">
+              <table className="w-full min-w-[1120px] text-sm">
+                <thead>
+                  <tr className="border-b border-[#F0EFF5] bg-[#FAFAFD]">
+                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
+                      שם לקוח
+                    </th>
+                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
+                      פרויקט / אפיון
+                    </th>
+                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
+                      ממלא המסמך
+                    </th>
+                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
+                      מנהל הפרויקט
+                    </th>
+                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
+                      תאריך יצירה
+                    </th>
+                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
+                      עודכן לאחרונה
+                    </th>
+                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-[#6B6B8A]">
+                      סטטוס
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-[#6B6B8A]">
+                      <span className="sr-only">פעולות</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((project, idx) => {
+                    const status = normalizeProjectStatus(project.status);
+                    const statusCfg = STATUS_CONFIG[status];
+
+                    return (
+                      <tr
+                        key={project.projectId}
+                        className={cn(
+                          "group transition-colors hover:bg-indigo-50/40",
+                          idx < filtered.length - 1 &&
+                            "border-b border-[#F0EFF5]"
+                        )}
+                      >
+                        <td className="px-5 py-4">
+                          <span className="font-semibold text-[#1A1A2E]">
+                            {project.clientName}
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-[#4B4B68]">
-                        {project.authorName}
-                      </td>
-                      <td className="px-5 py-4 text-[#4B4B68]">
-                        {project.projectManagerName || "לא הוגדר"}
-                      </td>
-                      <td className="px-5 py-4 text-[#6B6B8A]">
-                        {formatShortDate(project.createdAt)}
-                      </td>
-                      <td className="px-5 py-4 text-[#6B6B8A]">
-                        {formatRelativeDate(project.updatedAt)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <Badge variant={statusCfg.variant}>
-                          {statusCfg.label}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-left">
-                        <div className="flex items-center justify-end gap-4">
-                          <Link
-                            href={`/admin/project/${project.projectId}/view`}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-[#5B4FE8] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4A3ED6] hover:shadow-md"
-                          >
-                            פתח אפיון
-                            <ExternalLink size={13} />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteTarget(project)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500"
-                            title="מחק אפיון"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <FileText
+                              size={14}
+                              className="shrink-0 text-indigo-400"
+                            />
+                            <span className="text-[#1A1A2E]">
+                              {project.agentName || project.projectName || "טרם הוגדר"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-[#4B4B68]">
+                          {project.authorName}
+                        </td>
+                        <td className="px-5 py-4 text-[#4B4B68]">
+                          {project.projectManagerName || "לא הוגדר"}
+                        </td>
+                        <td className="px-5 py-4 text-[#6B6B8A]">
+                          {formatShortDate(project.createdAt)}
+                        </td>
+                        <td className="px-5 py-4 text-[#6B6B8A]">
+                          {formatRelativeDate(project.updatedAt)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <Badge variant={statusCfg.variant}>
+                            {statusCfg.label}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-left">
+                          <div className="flex items-center justify-end gap-4">
+                            <Link
+                              href={`/admin/project/${project.projectId}/view`}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-[#5B4FE8] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4A3ED6] hover:shadow-md"
+                            >
+                              פתח אפיון
+                              <ExternalLink size={13} />
+                            </Link>
+                            <button
+                              onClick={() => setDeleteTarget(project)}
+                              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                              title="מחק אפיון"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </main>
 

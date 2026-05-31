@@ -84,7 +84,7 @@ export default function Step2DataSources() {
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor={`ds-name-${ds.id}`} required>
                         <span className="inline-flex items-center gap-1.5">

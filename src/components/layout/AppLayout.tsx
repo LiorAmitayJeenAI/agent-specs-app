@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
 import LoginPage from "@/components/login/LoginPage";
 import StepAgentDetails from "@/components/steps/StepAgentDetails";
@@ -30,6 +31,7 @@ export default function AppLayout() {
   const projectId = rawProjectId?.match(UUID_PATTERN)?.[0];
 
   const { currentStep, isLoginComplete, isAdminView, projectId: storedProjectId, resetForm } = useFormStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const projectMismatch = !!(projectId && projectId !== storedProjectId);
 
@@ -50,15 +52,31 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-[#F7F7FB]">
-      <Sidebar />
+      <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
       <main className="flex-1 overflow-y-auto">
+        {/* Mobile top bar */}
+        <div className="sticky top-0 z-20 flex md:hidden items-center justify-between border-b border-[#EEEEEE] bg-white/90 backdrop-blur px-4 py-2.5">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+            aria-label="פתח תפריט"
+          >
+            <Menu size={20} />
+          </button>
+          <img
+            src="/JEEN_logo.png"
+            alt="Jeen"
+            className="h-12 w-auto"
+          />
+        </div>
+
         <img
           src="/JEEN_logo.png"
           alt="Jeen"
-          className="fixed -top-4 left-4 h-[8.5rem] w-auto z-10"
+          className="hidden md:block fixed -top-4 left-4 h-[8.5rem] w-auto z-10"
         />
-        <div className="max-w-4xl mx-auto px-6 py-10 lg:py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 md:py-10 lg:py-12">
           {isCurrentStepLocked ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white/80 px-6 py-8 text-center shadow-xl shadow-indigo-950/[0.04]">
               <h1 className="text-2xl font-bold text-slate-900">

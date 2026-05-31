@@ -102,7 +102,7 @@ export default function LoginPage({ projectId }: LoginPageProps) {
       <img
         src="/JEEN_logo.png"
         alt="Jeen"
-        className="fixed -top-4 left-4 z-10 h-[8.5rem] w-auto"
+        className="hidden sm:block fixed -top-4 left-4 z-10 h-[8.5rem] w-auto"
       />
       <form
         onSubmit={handleSubmit}

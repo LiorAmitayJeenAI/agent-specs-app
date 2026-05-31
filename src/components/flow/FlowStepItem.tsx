@@ -40,9 +40,9 @@ export default function FlowStepItem({
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={cn("flex gap-3 pb-4", isLast && "pb-2", isDragging && "opacity-60")}
+      className={cn("flex gap-2 sm:gap-3 pb-4", isLast && "pb-2", isDragging && "opacity-60")}
     >
-      <div className="flex flex-col items-center shrink-0">
+      <div className="hidden sm:flex flex-col items-center shrink-0">
         <div className="z-10 mt-40 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEE9FF] text-sm font-bold text-[#5B4FE8] shadow-sm ring-4 ring-white">
           {step.order}
         </div>
@@ -53,18 +53,26 @@ export default function FlowStepItem({
 
       <article
         dir="rtl"
-        className="relative min-h-[360px] flex-1 rounded-2xl border border-[#E0E0E0] bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
+        className="relative min-h-0 sm:min-h-[360px] flex-1 rounded-2xl border border-[#E0E0E0] bg-white p-3 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.07)]"
       >
+        {/* Mobile step number badge */}
+        <div className="sm:hidden flex items-center gap-2 mb-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EEE9FF] text-xs font-bold text-[#5B4FE8]">
+            {step.order}
+          </div>
+          <span className="text-sm font-semibold text-[#1A1A2E]">שלב {step.order}</span>
+        </div>
+
         <button
           type="button"
           onClick={() => removeFlowStep(useCaseId, step.id)}
           aria-label="מחק שלב"
-          className="absolute -left-3 -top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-red-100 bg-white text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
+          className="absolute -left-2 -top-2 sm:-left-3 sm:-top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-red-100 bg-white text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
         >
           <X size={14} />
         </button>
-        <div className="grid gap-5 lg:grid-cols-2">
-          <section className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4">
+        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+          <section className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 sm:p-4">
             <div className="mb-4">
               <Label htmlFor={`step-desc-${step.id}`} className="inline-flex w-full justify-center" required>
                 תיאור השלב
@@ -75,11 +83,11 @@ export default function FlowStepItem({
                 placeholder='לדוגמה: "נכנסים ל-SAP ובוחרים את סביבת העבודה הרלוונטית"'
                 value={step.description}
                 onChange={(e) => update({ description: e.target.value })}
-                className="h-[190px] rounded-xl border-[#E0E0E0] bg-white text-[#1A1A2E] placeholder:text-[#AAAACC] placeholder:italic"
+                className="h-[140px] sm:h-[190px] rounded-xl border-[#E0E0E0] bg-white text-[#1A1A2E] placeholder:text-[#AAAACC] placeholder:italic"
               />
             </div>
 
-            <div className="rounded-xl border border-[#E0E0E0] bg-white px-4 py-3">
+            <div className="rounded-xl border border-[#E0E0E0] bg-white px-3 sm:px-4 py-3">
               <p className="text-center text-sm font-medium text-[#4A4A6A]">האם מתבצע בשלב זה חישוב או לוגיקה עסקית?</p>
               <div className="mt-2 flex items-center justify-center gap-6">
                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-[#4A4A6A]">
@@ -131,7 +139,7 @@ export default function FlowStepItem({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4">
+          <section className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 sm:p-4">
             <Label className="text-center">
               <span className="inline-flex items-center justify-center gap-1.5">
                 צילום מסך של השלב
@@ -155,7 +163,7 @@ export default function FlowStepItem({
         </div>
       </article>
 
-      <div className="flex w-10 shrink-0 items-center justify-center">
+      <div className="hidden sm:flex w-10 shrink-0 items-center justify-center">
         <button
           type="button"
           aria-label="Drag to reorder step"
