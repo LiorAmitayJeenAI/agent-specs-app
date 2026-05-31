@@ -437,6 +437,7 @@ const docBlockParagraph = (block: WordExportBlock): Paragraph => {
       spacing: { before: 120, after: 120 },
       children: [
         new ImageRun({
+          type: "png",
           data: block.imageData,
           transformation: { width: block.width, height: block.height },
         }),
@@ -552,6 +553,7 @@ async function createLogoHeader(): Promise<Header | undefined> {
         spacing: { before: 0, after: 120 },
         children: [
           new ImageRun({
+            type: "png",
             data: logo.data,
             transformation: { width: WORD_LOGO_WIDTH, height: logoHeight },
           }),

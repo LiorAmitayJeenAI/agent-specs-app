@@ -6,32 +6,41 @@ const globalForPrisma = globalThis as unknown as {
   prismaCacheKey?: string;
 };
 
-const connectionString = process.env.DATABASE_URL;
+function createPrismaClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not configured");
-}
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not configured");
+  }
 
-const isLocalDb = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
+  const isLocalDb = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
 
-const adapter = new PrismaPg({
-  connectionString,
-  ...(!isLocalDb && {
-    ssl: { rejectUnauthorized: false },
-  }),
-});
-
-const prismaCacheKey = `${connectionString}:${isLocalDb ? "nossl" : "ssl"}`;
-
-export const prisma =
-  globalForPrisma.prismaCacheKey === prismaCacheKey && globalForPrisma.prisma
-    ? globalForPrisma.prisma
-    :
-  new PrismaClient({
-    adapter,
+  const adapter = new PrismaPg({
+    connectionString,
+    ...(!isLocalDb && {
+      ssl: { rejectUnauthorized: false },
+    }),
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-  globalForPrisma.prismaCacheKey = prismaCacheKey;
+  const cacheKey = `${connectionString}:${isLocalDb ? "nossl" : "ssl"}`;
+
+  if (globalForPrisma.prismaCacheKey === cacheKey && globalForPrisma.prisma) {
+    return globalForPrisma.prisma;
+  }
+
+  const client = new PrismaClient({ adapter });
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+    globalForPrisma.prismaCacheKey = cacheKey;
+  }
+
+  return client;
 }
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = createPrismaClient();
+    return (client as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
