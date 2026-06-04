@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle,
   Send,
@@ -13,15 +13,29 @@ import {
 } from "lucide-react";
 import {
   createHebrewWordBlob,
-  resolveImageBlock,
-  formatDocumentValue,
-  type WordExportValue,
-  type WordExportBlock,
 } from "@/lib/wordExport";
 import { useFormStore, type ProjectStatus } from "@/store/formStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import LlmDraftPreviewModal from "@/components/steps/LlmDraftPreviewModal";
+import DiagramCard from "@/components/steps/DiagramCard";
+import PrdDocumentPreview from "@/components/steps/PrdDocumentPreview";
+import { resolveDiagramWordBlocks } from "@/lib/diagram/resolveDiagramWordBlocksClient";
+import {
+  applyLlmDraftSections,
+  buildLlmDraftPayload,
+  createLlmDraftEditableHash,
+  mergeDraftSnapshotIntoPrdSource,
+} from "@/lib/llm/draftPayload";
+import {
+  buildPrdDocumentBlocks,
+  resolveDocumentBlocksForExport,
+  type PrdDocumentSource,
+} from "@/lib/prdDocument";
+import type { WordExportBlock } from "@/lib/wordExport";
+import type { DiagramType } from "@/types/diagram";
+import type { LlmDraftMode, LlmDraftSectionKey, LlmDraftSections } from "@/types/llmDraft";
 
 interface SectionSummaryProps {
   icon: React.ReactNode;
@@ -29,6 +43,16 @@ interface SectionSummaryProps {
   count: number;
   color: string;
   isEmpty: boolean;
+}
+
+async function resolveWordBlocksForExport(
+  blocks: Parameters<typeof resolveDocumentBlocksForExport>[0],
+  projectId: string | null,
+  includedDiagramTypes?: DiagramType[]
+): Promise<WordExportBlock[]> {
+  const resolvedBlocks = await resolveDocumentBlocksForExport(blocks);
+  const diagramBlocks = await resolveDiagramWordBlocks(projectId, includedDiagramTypes);
+  return [...resolvedBlocks, ...diagramBlocks];
 }
 
 function SectionSummary({ icon, title, count, color, isEmpty }: SectionSummaryProps) {
@@ -52,108 +76,12 @@ function SectionSummary({ icon, title, count, color, isEmpty }: SectionSummaryPr
   );
 }
 
-type DocumentValue = WordExportValue;
-
-type DocumentBlock =
-  | { kind: "title"; text: string }
-  | { kind: "meta"; text: string }
-  | { kind: "heading"; text: string }
-  | { kind: "subheading"; text: string }
-  | { kind: "label"; text: string }
-  | { kind: "paragraph"; text: string }
-  | { kind: "editableText"; value: string; onChange: (value: string) => void; multiline?: boolean }
-  | { kind: "editableList"; value: string[]; onChange: (value: string[]) => void }
-  | { kind: "editableSelect"; value: string; options: string[]; onChange: (value: string) => void }
-  | { kind: "editableBoolean"; value: boolean; onChange: (value: boolean) => void }
-  | { kind: "empty"; text: string }
-  | { kind: "space" }
-  | { kind: "imageRef"; url?: string; preview?: string };
-
-const CUSTOMER_OPTIONS = [
-  "מכבי שירותי בריאות",
-  "חברת חשמל לישראל",
-  "ישראכרט",
-  "ביטוח ישיר",
-];
-
 const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "sent_to_client", label: "נשלח ללקוח" },
   { value: "client_draft", label: "טיוטת לקוח" },
   { value: "pm_review", label: "בטיפול מנהל פרויקט" },
   { value: "completed", label: "הושלם" },
 ];
-
-const SOURCE_TYPES = [
-  "מסד נתונים (SQL)",
-  "קובץ Excel / CSV",
-  "API חיצוני",
-  "מערכת ERP",
-  "מערכת CRM",
-  "דוא\"ל / לוח שנה",
-  "מסמכים (Word/PDF)",
-  "Jira",
-  "אחר",
-];
-
-const fieldBlocks = (label: string, value: DocumentValue): DocumentBlock[] => [
-  { kind: "label", text: label },
-  { kind: "paragraph", text: formatDocumentValue(value) },
-];
-
-const editableTextBlocks = (
-  label: string,
-  value: string,
-  onChange: (value: string) => void,
-  multiline = true
-): DocumentBlock[] => [
-  { kind: "label", text: label },
-  { kind: "editableText", value, onChange, multiline },
-];
-
-const editableListBlocks = (
-  label: string,
-  value: string[],
-  onChange: (value: string[]) => void
-): DocumentBlock[] => [
-  { kind: "label", text: label },
-  { kind: "editableList", value, onChange },
-];
-
-const editableSelectBlocks = (
-  label: string,
-  value: string,
-  options: string[],
-  onChange: (value: string) => void
-): DocumentBlock[] => [
-  { kind: "label", text: label },
-  { kind: "editableSelect", value, options, onChange },
-];
-
-const editableBooleanBlocks = (
-  label: string,
-  value: boolean,
-  onChange: (value: boolean) => void
-): DocumentBlock[] => [
-  { kind: "label", text: label },
-  { kind: "editableBoolean", value, onChange },
-];
-
-const emptyBlocks = (text: string): DocumentBlock[] => [{ kind: "empty", text }];
-
-async function resolveDocumentBlocksForExport(blocks: DocumentBlock[]): Promise<WordExportBlock[]> {
-  const resolved: WordExportBlock[] = [];
-
-  for (const block of blocks) {
-    if (block.kind === "imageRef") {
-      const imageBlock = await resolveImageBlock({ url: block.url, preview: block.preview });
-      if (imageBlock) resolved.push(imageBlock);
-    } else {
-      resolved.push(block as WordExportBlock);
-    }
-  }
-
-  return resolved;
-}
 
 export default function Step5Summary() {
   const {
@@ -176,206 +104,291 @@ export default function Step5Summary() {
     isAdminView,
     projectStatus,
     setProjectStatus,
+    projectId,
+    llmDraftSelection,
+    setLlmDraftSelection,
+    updateSelectedLlmDraftSnapshot,
+    clearLlmDraftSelection,
   } = useFormStore();
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [llmConfigured, setLlmConfigured] = useState(false);
+  const [llmMode, setLlmMode] = useState<LlmDraftMode>("formal");
+  const [isLlmLoading, setIsLlmLoading] = useState(false);
+  const [llmError, setLlmError] = useState<string | null>(null);
+  const [llmOriginal, setLlmOriginal] = useState<LlmDraftSections | null>(null);
+  const [llmProposed, setLlmProposed] = useState<LlmDraftSections | null>(null);
+  const [acceptedSourceHash, setAcceptedSourceHash] = useState<string | null>(null);
+  const [focusedPreview, setFocusedPreview] = useState<"original" | "ai" | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
+  const [wordDiagramInclusion, setWordDiagramInclusion] = useState<Record<DiagramType, boolean>>({
+    flow: true,
+    architecture: true,
+  });
+  const previousEditableHashRef = useRef<string | null>(null);
 
   const output = getOutput();
   const hasUseCases = useCases.length > 0;
+
+  useEffect(() => {
+    const loadLlmStatus = () => {
+      fetch("/api/llm/status")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { configured?: boolean; mode?: LlmDraftMode } | null) => {
+          setLlmConfigured(Boolean(data?.configured));
+          if (data?.mode === "formal" || data?.mode === "polish") setLlmMode(data.mode);
+        })
+        .catch(() => {
+          setLlmConfigured(false);
+        });
+    };
+
+    loadLlmStatus();
+    window.addEventListener("focus", loadLlmStatus);
+    return () => window.removeEventListener("focus", loadLlmStatus);
+  }, []);
+
+  const prdSource: PrdDocumentSource = useMemo(
+    () => ({
+      projectIntake,
+      agentDetails,
+      useCases,
+      dataSources,
+      concepts,
+      successMetrics,
+    }),
+    [projectIntake, agentDetails, useCases, dataSources, concepts, successMetrics]
+  );
+
+  const llmPayload = useMemo(() => buildLlmDraftPayload(prdSource), [prdSource]);
+  const editableSourceHash = useMemo(
+    () => createLlmDraftEditableHash(llmPayload),
+    [llmPayload]
+  );
+  const hasFinalSelection = Boolean(llmDraftSelection);
+  const includedDiagramTypes = useMemo(
+    () =>
+      (["flow", "architecture"] as DiagramType[]).filter((type) => wordDiagramInclusion[type]),
+    [wordDiagramInclusion]
+  );
+  const isComparisonNeeded = !hasFinalSelection && acceptedSourceHash !== editableSourceHash;
+  const comparisonOriginalSource = useMemo(
+    () => (llmOriginal ? mergeDraftSnapshotIntoPrdSource(prdSource, llmOriginal) : prdSource),
+    [prdSource, llmOriginal]
+  );
+  const comparisonAiSource = useMemo(
+    () => (llmProposed ? mergeDraftSnapshotIntoPrdSource(prdSource, llmProposed) : null),
+    [prdSource, llmProposed]
+  );
+
+  const documentBlocks = useMemo(
+    () =>
+      buildPrdDocumentBlocks(prdSource, {
+        editable: true,
+        readOnlyFields: { clientName: true },
+        updaters: {
+          updateProjectIntake,
+          updateAgentDetails,
+          updateUseCase,
+          updateQAPair,
+          updateFlowStep,
+          updateDataSource,
+          updateConcept,
+          updateSuccessMetric,
+        },
+      }),
+    [
+      prdSource,
+      updateProjectIntake,
+      updateAgentDetails,
+      updateUseCase,
+      updateQAPair,
+      updateFlowStep,
+      updateDataSource,
+      updateConcept,
+      updateSuccessMetric,
+    ]
+  );
+
+  const originalPreviewBlocks = useMemo(
+    () => buildPrdDocumentBlocks(comparisonOriginalSource, { editable: false }),
+    [comparisonOriginalSource]
+  );
+  const aiPreviewBlocks = useMemo(
+    () => (comparisonAiSource ? buildPrdDocumentBlocks(comparisonAiSource, { editable: false }) : []),
+    [comparisonAiSource]
+  );
+
+  useEffect(() => {
+    if (!llmDraftSelection) {
+      previousEditableHashRef.current = editableSourceHash;
+      return;
+    }
+
+    if (llmDraftSelection.editableSourceHash === editableSourceHash) {
+      previousEditableHashRef.current = editableSourceHash;
+      return;
+    }
+
+    if (previousEditableHashRef.current === null) {
+      clearLlmDraftSelection();
+      setAcceptedSourceHash(null);
+      previousEditableHashRef.current = editableSourceHash;
+      return;
+    }
+
+    setLlmDraftSelection({
+      ...llmDraftSelection,
+      [llmDraftSelection.selectedVersion]: llmPayload,
+      editableSourceHash,
+    });
+    setAcceptedSourceHash(editableSourceHash);
+    previousEditableHashRef.current = editableSourceHash;
+  }, [
+    clearLlmDraftSelection,
+    editableSourceHash,
+    llmDraftSelection,
+    llmPayload,
+    setLlmDraftSelection,
+  ]);
+
+  useEffect(() => {
+    if (!isComparisonNeeded) return;
+
+    setLlmError(null);
+    setLlmOriginal(llmPayload);
+    setLlmProposed(null);
+
+    if (!llmConfigured) {
+      setIsLlmLoading(false);
+      setLlmError("שירות AI לא זמין כרגע ולכן לא ניתן ליצור גרסת PRD להשוואה.");
+      return;
+    }
+
+    let cancelled = false;
+    setIsLlmLoading(true);
+
+    fetch("/api/llm/polish-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sections: llmPayload }),
+    })
+      .then(async (res) => {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+          sections?: LlmDraftSections;
+          mode?: LlmDraftMode;
+        } | null;
+
+        if (!res.ok) {
+          throw new Error(data?.error ?? "לא הצלחנו ליצור גרסת AI למסמך.");
+        }
+        if (!data?.sections) {
+          throw new Error("תשובה לא תקינה מהשרת.");
+        }
+        if (cancelled) return;
+        if (data.mode === "formal" || data.mode === "polish") {
+          setLlmMode(data.mode);
+        }
+        setLlmProposed(data.sections);
+      })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setLlmError(error.message || "לא הצלחנו ליצור גרסת AI למסמך. בדוק את החיבור ונסה שוב.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLlmLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isComparisonNeeded, llmConfigured, llmPayload, retryToken]);
+
+  const handleUseOriginal = () => {
+    if (llmOriginal && llmProposed) {
+      setLlmDraftSelection({
+        projectId: projectId ?? null,
+        original: llmOriginal,
+        ai: llmProposed,
+        selectedVersion: "original",
+        editableSourceHash,
+      });
+    }
+    setAcceptedSourceHash(editableSourceHash);
+    setFocusedPreview(null);
+    setLlmOriginal(null);
+    setLlmProposed(null);
+    setLlmError(null);
+  };
+
+  const handleUseAi = () => {
+    if (!llmProposed) return;
+    setLlmDraftSelection({
+      projectId: projectId ?? null,
+      original: llmOriginal ?? llmPayload,
+      ai: llmProposed,
+      selectedVersion: "ai",
+      editableSourceHash,
+    });
+    setAcceptedSourceHash(editableSourceHash);
+    applyLlmDraftSections(
+      {
+        updateAgentDetails,
+        updateUseCase,
+        updateQAPair,
+        updateFlowStep,
+        updateDataSource,
+        updateConcept,
+        updateSuccessMetric,
+      },
+      llmProposed,
+      new Set<LlmDraftSectionKey>(["fullDocument"])
+    );
+    setFocusedPreview(null);
+    setLlmOriginal(null);
+    setLlmProposed(null);
+    setLlmError(null);
+  };
+
+  const handleReturnToComparison = () => {
+    if (!llmDraftSelection) return;
+
+    const nextOriginal =
+      llmDraftSelection.selectedVersion === "original"
+        ? llmPayload
+        : llmDraftSelection.original;
+    const nextAi =
+      llmDraftSelection.selectedVersion === "ai"
+        ? llmPayload
+        : llmDraftSelection.ai;
+
+    updateSelectedLlmDraftSnapshot(llmPayload);
+    setLlmOriginal(nextOriginal);
+    setLlmProposed(nextAi);
+    setFocusedPreview(llmDraftSelection.selectedVersion);
+  };
+
+  const clearLlmDraftCache = () => {
+    setLlmOriginal(null);
+    setLlmProposed(null);
+    setAcceptedSourceHash(null);
+    setFocusedPreview(null);
+    setLlmError(null);
+    clearLlmDraftSelection();
+  };
+
+  const handleWordDiagramInclusionChange = (type: DiagramType, included: boolean) => {
+    setWordDiagramInclusion((current) => ({ ...current, [type]: included }));
+  };
 
   const totalFlowSteps = useCases.reduce((sum, uc) => sum + uc.flowSteps.length, 0);
   const totalFiles = useCases.reduce(
     (sum, uc) => sum + uc.flowSteps.reduce((s, step) => s + step.files.length, 0),
     0
   );
-  const documentBlocks: DocumentBlock[] = [
-    { kind: "title", text: "מסמך אפיון סוכן AI" },
-    { kind: "meta", text: `תאריך יצירה: ${new Date().toLocaleDateString("he-IL")}` },
-    { kind: "space" },
-    { kind: "heading", text: "שם הלקוח" },
-    {
-      kind: "editableSelect",
-      value: projectIntake.clientName,
-      options: CUSTOMER_OPTIONS,
-      onChange: (clientName) => updateProjectIntake({ clientName }),
-    },
-    { kind: "space" },
-    { kind: "heading", text: "עורך המסמך" },
-    {
-      kind: "editableText",
-      value: projectIntake.documentAuthorName,
-      onChange: (documentAuthorName) => updateProjectIntake({ documentAuthorName }),
-      multiline: false,
-    },
-    { kind: "space" },
-    { kind: "heading", text: "שם הסוכן" },
-    {
-      kind: "editableText",
-      value: agentDetails.requestedAgentName,
-      onChange: (requestedAgentName) => updateAgentDetails({ requestedAgentName }),
-      multiline: false,
-    },
-    { kind: "space" },
-    { kind: "heading", text: "תיאור כללי" },
-    {
-      kind: "editableText",
-      value: agentDetails.shortAgentDescription,
-      onChange: (shortAgentDescription) => updateAgentDetails({ shortAgentDescription }),
-    },
-    { kind: "space" },
-    { kind: "heading", text: "תרחישי שימוש" },
-    ...(useCases.length > 0
-      ? useCases.flatMap((uc, ucIndex): DocumentBlock[] => [
-          {
-            kind: "subheading",
-            text: `תרחיש ${ucIndex + 1}: ${uc.useCaseName || uc.qaPairs?.[0]?.question || "תרחיש ללא שם"}`,
-          },
-          ...editableTextBlocks("שם תרחיש השימוש", uc.useCaseName, (useCaseName) =>
-            updateUseCase(uc.id, { useCaseName })
-          ),
-          ...editableTextBlocks("תיאור התרחיש", uc.title, (title) =>
-            updateUseCase(uc.id, { title })
-          ),
-          { kind: "subheading", text: "התהליך הקיים כיום" },
-          ...editableTextBlocks("מבצע התהליך כיום", uc.performer, (performer) =>
-            updateUseCase(uc.id, { performer })
-          ),
-          ...editableListBlocks("מערכות מעורבות", uc.systemsInvolved, (systemsInvolved) =>
-            updateUseCase(uc.id, { systemsInvolved })
-          ),
-          ...editableTextBlocks("הערות נוספות", uc.additionalNotes, (additionalNotes) =>
-            updateUseCase(uc.id, { additionalNotes })
-          ),
-          { kind: "subheading", text: "דוגמאות לשאלות אפשריות, תשובות ומקורות מידע" },
-          ...(uc.qaPairs ?? []).flatMap((pair, pairIndex): DocumentBlock[] => [
-            { kind: "label", text: `שאלה ${pairIndex + 1}` },
-            {
-              kind: "editableText",
-              value: pair.question,
-              onChange: (question) =>
-                updateQAPair(uc.id, pair.id, { question }),
-            },
-            { kind: "label", text: `תשובה ${pairIndex + 1}` },
-            {
-              kind: "editableText",
-              value: pair.expectedAnswer,
-              onChange: (expectedAnswer) =>
-                updateQAPair(uc.id, pair.id, { expectedAnswer }),
-            },
-            { kind: "label", text: `מקור מידע ${pairIndex + 1}` },
-            {
-              kind: "editableText",
-              value: pair.dataSourceRef,
-              onChange: (dataSourceRef) =>
-                updateQAPair(uc.id, pair.id, { dataSourceRef }),
-            },
-          ]),
-          { kind: "subheading", text: "פירוט התהליך הקיים (Flow)" },
-          ...(uc.flowSteps.length > 0
-            ? uc.flowSteps.flatMap((step): DocumentBlock[] => [
-                { kind: "label", text: `שלב ${step.order}` },
-                {
-                  kind: "editableText",
-                  value: step.description,
-                  onChange: (description) => updateFlowStep(uc.id, step.id, { description }),
-                },
-                ...editableBooleanBlocks("יש חישוב בשלב זה?", step.hasCalculation, (hasCalculation) =>
-                  updateFlowStep(uc.id, step.id, {
-                    hasCalculation,
-                    calculationDetails: hasCalculation ? step.calculationDetails : "",
-                  })
-                ),
-                ...(step.hasCalculation
-                  ? editableTextBlocks("פירוט החישוב", step.calculationDetails, (calculationDetails) =>
-                      updateFlowStep(uc.id, step.id, { calculationDetails })
-                    )
-                  : []),
-                ...(step.files.filter((f) => f.kind === "image" && f.uploadStatus === "uploaded").length > 0
-                  ? [
-                      { kind: "label" as const, text: "צילומי מסך" },
-                      ...step.files
-                        .filter((f) => f.kind === "image" && f.uploadStatus === "uploaded")
-                        .map((f): DocumentBlock => ({ kind: "imageRef", url: f.url, preview: f.preview })),
-                    ]
-                  : []),
-                ...(step.files.filter((f) => f.kind !== "image" && f.uploadStatus === "uploaded").length > 0
-                  ? [
-                      { kind: "label" as const, text: "קבצים מצורפים" },
-                      ...step.files
-                        .filter((f) => f.kind !== "image" && f.uploadStatus === "uploaded")
-                        .map((f): DocumentBlock => ({ kind: "paragraph" as const, text: `📎 ${f.name}` })),
-                    ]
-                  : []),
-              ])
-            : emptyBlocks("לא הוזנו שלבי תהליך.")),
-          { kind: "space" },
-        ])
-      : emptyBlocks("לא הוזנו תרחישי שימוש.")),
-    { kind: "space" },
-    { kind: "heading", text: "מקורות מידע" },
-    ...(dataSources.length > 0
-      ? dataSources.flatMap((source, index): DocumentBlock[] => [
-          { kind: "subheading", text: `מקור מידע ${index + 1}: ${source.name || "מקור ללא שם"}` },
-          ...editableTextBlocks("שם מקור הנתונים", source.name, (name) =>
-            updateDataSource(source.id, { name })
-          ),
-          ...editableSelectBlocks("סוג מקור", source.type, SOURCE_TYPES, (type) =>
-            updateDataSource(source.id, { type })
-          ),
-          ...editableTextBlocks("תיאור", source.description, (description) =>
-            updateDataSource(source.id, { description })
-          ),
-          ...(source.files.filter((f) => f.uploadStatus === "uploaded").length > 0
-            ? [
-                { kind: "label" as const, text: "קבצים מצורפים" },
-                ...source.files
-                  .filter((f) => f.uploadStatus === "uploaded")
-                  .flatMap((f): DocumentBlock[] =>
-                    f.kind === "image"
-                      ? [{ kind: "imageRef" as const, url: f.url, preview: f.preview }]
-                      : [{ kind: "paragraph" as const, text: `📎 ${f.name}` }]
-                  ),
-              ]
-            : []),
-          { kind: "space" },
-        ])
-      : emptyBlocks("לא הוזנו מקורות מידע.")),
-    { kind: "space" },
-    { kind: "heading", text: "מושגים והגדרות" },
-    ...(concepts.length > 0
-      ? concepts.flatMap((concept, index): DocumentBlock[] => [
-          { kind: "subheading", text: `מושג ${index + 1}: ${concept.term || "מושג ללא שם"}` },
-          ...editableTextBlocks("המונח", concept.term, (term) =>
-            updateConcept(concept.id, { term })
-          ),
-          ...editableTextBlocks("הגדרה", concept.definition, (definition) =>
-            updateConcept(concept.id, { definition })
-          ),
-          ...editableTextBlocks("דוגמאות", concept.examples, (examples) =>
-            updateConcept(concept.id, { examples })
-          ),
-          { kind: "space" },
-        ])
-      : emptyBlocks("לא הוזנו מושגים והגדרות.")),
-    { kind: "space" },
-    { kind: "heading", text: "מדדי הצלחה" },
-    ...(successMetrics.length > 0
-      ? successMetrics.flatMap((metric, index): DocumentBlock[] => [
-          { kind: "subheading", text: `מדד ${index + 1}: ${metric.metric || "מדד ללא שם"}` },
-          ...editableTextBlocks("שם המדד", metric.metric, (metricName) =>
-            updateSuccessMetric(metric.id, { metric: metricName })
-          ),
-          ...editableTextBlocks("יעד", metric.target, (target) =>
-            updateSuccessMetric(metric.id, { target })
-          ),
-          ...editableTextBlocks("שיטת מדידה", metric.measurementMethod, (measurementMethod) =>
-            updateSuccessMetric(metric.id, { measurementMethod })
-          ),
-          { kind: "space" },
-        ])
-      : emptyBlocks("לא הוזנו מדדי הצלחה.")),
-  ];
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -401,7 +414,11 @@ export default function Step5Summary() {
         const summaryClientName = output.projectIntake.clientName.trim();
         const summaryAgentName = output.agentDetails.requestedAgentName.trim();
         const summaryAuthorName = output.projectIntake.documentAuthorName.trim();
-        const exportBlocks = await resolveDocumentBlocksForExport(documentBlocks);
+        const exportBlocks = await resolveWordBlocksForExport(
+          documentBlocks,
+          projectId ?? null,
+          includedDiagramTypes
+        );
         const docxBlob = await createHebrewWordBlob(exportBlocks);
         const docxFile = new File([docxBlob], `${summaryAgentName}-${summaryAuthorName}.docx`, {
           type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -489,6 +506,7 @@ export default function Step5Summary() {
       }
 
       useFormStore.persist.clearStorage();
+      clearLlmDraftCache();
       setSubmitted(true);
     } catch (error) {
       console.error("שגיאה בשליחה");
@@ -499,7 +517,7 @@ export default function Step5Summary() {
   };
 
   const handleExportWord = async () => {
-    const exportBlocks = await resolveDocumentBlocksForExport(documentBlocks);
+    const exportBlocks = await resolveWordBlocksForExport(documentBlocks, projectId, includedDiagramTypes);
     const rtlBlob = await createHebrewWordBlob(exportBlocks);
     const url = URL.createObjectURL(rtlBlob);
     const link = document.createElement("a");
@@ -565,27 +583,6 @@ export default function Step5Summary() {
           </div>
         </CardContent>
       </Card>
-
-      {isAdminView && (
-        <Card>
-          <CardHeader>
-            <CardTitle>סטטוס מסמך</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <select
-              value={projectStatus}
-              onChange={(e) => setProjectStatus(e.target.value as ProjectStatus)}
-              className="flex w-full max-w-sm rounded-lg border border-[#E0E0E0] bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] shadow-sm transition focus:border-[#5B4FE8] focus:outline-none focus:shadow-[0_0_0_3px_rgba(91,79,232,0.1)]"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Summary overview */}
       <Card>
@@ -655,161 +652,176 @@ export default function Step5Summary() {
 
       <section className="rounded-3xl border border-[#E0E0E0] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <div className="border-b border-slate-100 px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-slate-800">תצוגה מקדימה של המסמך</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            זהו תוכן המסמך כפי שהוא יופיע בייצוא. אפשר לגלול, לקרוא ולבדוק את המידע לפני הורדה.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">
+                {isComparisonNeeded ? "השוואת גרסאות PRD" : "תצוגה מקדימה של המסמך"}
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                {isComparisonNeeded
+                  ? "גרסת ה-AI נוצרת אוטומטית. לאחר ההשוואה יש לבחור את המסמך שבו תרצה להשתמש."
+                  : "זהו תוכן המסמך כפי שהוא יופיע בייצוא. אפשר לגלול, לקרוא ולבדוק את המידע לפני הורדה."}
+              </p>
+            </div>
+            {isComparisonNeeded && (
+              <Badge variant="secondary" className="shrink-0 px-3 py-1 text-[11px]">
+                מצב: {llmMode === "formal" ? "אפיון רשמי" : "ליטוש"}
+              </Badge>
+            )}
+          </div>
+          {llmError && (
+            <p className="mt-2 text-xs text-red-600">{llmError}</p>
+          )}
         </div>
 
-        <div className="max-h-[480px] overflow-y-auto bg-[#F7F7FB] px-3 py-3 sm:px-4">
-          <article className="mx-auto max-w-3xl bg-white px-6 py-7 text-right shadow-sm sm:px-9 sm:py-8">
-            {documentBlocks.map((block, index) => {
-              if (block.kind === "space") {
-                return <div key={index} className="h-3" />;
-              }
-
-              if (block.kind === "title") {
-                return (
-                  <h1 key={index} className="mb-2 text-2xl font-bold leading-tight text-slate-950">
-                    {block.text}
-                  </h1>
-                );
-              }
-
-              if (block.kind === "meta") {
-                return (
-                  <p key={index} className="mb-5 text-xs leading-relaxed text-slate-400">
-                    {block.text}
+        <div className="bg-[#F7F7FB] px-3 py-3 sm:px-4">
+          {isComparisonNeeded ? (
+            <div className="min-h-[480px]">
+              {isLlmLoading && (
+                <div className="flex min-h-[480px] flex-col items-center justify-center rounded-2xl border border-dashed border-indigo-200 bg-white/80 text-center">
+                  <span className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                  <p className="text-sm font-semibold text-slate-800">יוצר גרסת AI למסמך...</p>
+                  <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-500">
+                    אנחנו מכינים מסמך PRD מלא להשוואה מול הגרסה המקורית.
                   </p>
-                );
-              }
+                </div>
+              )}
 
-              if (block.kind === "heading") {
-                return (
-                  <h2
-                    key={index}
-                    className="mb-2 mt-5 border-b border-slate-200 pb-1.5 text-lg font-bold leading-tight text-slate-900"
+              {!isLlmLoading && llmError && (
+                <div className="flex min-h-[480px] flex-col items-center justify-center rounded-2xl border border-red-100 bg-white/90 px-6 text-center">
+                  <AlertCircle size={28} className="mb-3 text-red-500" />
+                  <p className="text-sm font-semibold text-slate-900">לא ניתן להציג השוואה כרגע</p>
+                  <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-500">{llmError}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setRetryToken((value) => value + 1)}
                   >
-                    {block.text}
-                  </h2>
-                );
-              }
+                    נסה שוב
+                  </Button>
+                </div>
+              )}
 
-              if (block.kind === "subheading") {
-                return (
-                  <h3 key={index} className="mb-1.5 mt-4 text-sm font-bold leading-tight text-slate-800">
-                    {block.text}
-                  </h3>
-                );
-              }
-
-              if (block.kind === "label") {
-                return (
-                  <p key={index} className="mt-3 text-xs font-semibold leading-relaxed text-slate-700">
-                    {block.text}:
-                  </p>
-                );
-              }
-
-              if (block.kind === "empty") {
-                return (
-                  <p key={index} className="whitespace-pre-wrap text-xs italic leading-6 text-slate-400">
-                    {block.text}
-                  </p>
-                );
-              }
-
-              if (block.kind === "editableText") {
-                return (
-                  <textarea
-                    key={index}
-                    value={block.value}
-                    rows={
-                      block.multiline === false
-                        ? 1
-                        : Math.min(6, Math.max(2, block.value.split("\n").length))
-                    }
-                    placeholder="-"
-                    onChange={(event) => block.onChange(event.target.value)}
-                    className="block w-full resize-none rounded-md border border-transparent bg-transparent px-0 py-0 text-xs leading-6 text-slate-700 outline-none transition-colors placeholder:text-slate-300 hover:bg-slate-50 focus:border-indigo-100 focus:bg-indigo-50/40 focus:px-2 focus:py-1"
-                  />
-                );
-              }
-
-              if (block.kind === "editableList") {
-                return (
-                  <textarea
-                    key={index}
-                    value={block.value.join("\n")}
-                    rows={Math.min(6, Math.max(2, block.value.length))}
-                    placeholder="-"
-                    onChange={(event) =>
-                      block.onChange(
-                        event.target.value
-                          .split("\n")
-                          .map((item) => item.trim())
-                          .filter(Boolean)
-                      )
-                    }
-                    className="block w-full resize-none rounded-md border border-transparent bg-transparent px-0 py-0 text-xs leading-6 text-slate-700 outline-none transition-colors placeholder:text-slate-300 hover:bg-slate-50 focus:border-indigo-100 focus:bg-indigo-50/40 focus:px-2 focus:py-1"
-                  />
-                );
-              }
-
-              if (block.kind === "editableSelect") {
-                return (
-                  <select
-                    key={index}
-                    value={block.value}
-                    onChange={(event) => block.onChange(event.target.value)}
-                    className="block w-full appearance-none rounded-md border border-transparent bg-transparent px-0 py-0 text-xs leading-6 text-slate-700 outline-none transition-colors hover:bg-slate-50 focus:border-indigo-100 focus:bg-indigo-50/40 focus:px-2 focus:py-1"
-                  >
-                    <option value="">-</option>
-                    {block.options.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                );
-              }
-
-              if (block.kind === "editableBoolean") {
-                return (
-                  <select
-                    key={index}
-                    value={block.value ? "true" : "false"}
-                    onChange={(event) => block.onChange(event.target.value === "true")}
-                    className="block w-full appearance-none rounded-md border border-transparent bg-transparent px-0 py-0 text-xs leading-6 text-slate-700 outline-none transition-colors hover:bg-slate-50 focus:border-indigo-100 focus:bg-indigo-50/40 focus:px-2 focus:py-1"
-                  >
-                    <option value="true">כן</option>
-                    <option value="false">לא</option>
-                  </select>
-                );
-              }
-
-              if (block.kind === "imageRef") {
-                const src = block.preview || block.url;
-                if (!src) return null;
-                return (
-                  <img
-                    key={index}
-                    src={src}
-                    alt="צילום מסך"
-                    className="my-2 max-w-full rounded-lg border border-slate-200 shadow-sm"
-                  />
-                );
-              }
-
-              return (
-                <p key={index} className="whitespace-pre-wrap text-xs leading-6 text-slate-700">
-                  {block.text}
-                </p>
-              );
-            })}
-          </article>
+              {!isLlmLoading && !llmError && llmOriginal && llmProposed && (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {[
+                    {
+                      key: "original" as const,
+                      title: "המסמך המקורי",
+                      description: "הגרסה שנבנתה מהמידע שהוזן בטופס.",
+                      actionLabel: "השתמש בגרסה המקורית",
+                      blocks: originalPreviewBlocks,
+                      onUse: handleUseOriginal,
+                    },
+                    {
+                      key: "ai" as const,
+                      title: "המסמך אחרי AI",
+                      description: "גרסה מלאה לאחר שכתוב ושיפור מקצועי.",
+                      actionLabel: "השתמש בגרסת ה-AI",
+                      blocks: aiPreviewBlocks,
+                      onUse: handleUseAi,
+                    },
+                  ].map((pane) => (
+                    <div
+                      key={pane.key}
+                      className="flex h-[70vh] min-h-[480px] max-h-[760px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setFocusedPreview(pane.key)}
+                        className="shrink-0 border-b border-slate-100 bg-white px-4 py-3 text-right transition hover:bg-slate-50"
+                      >
+                        <p className="text-sm font-bold text-slate-900">{pane.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-500">{pane.description}</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFocusedPreview(pane.key)}
+                        className="min-h-0 flex-1 overflow-y-auto bg-slate-50/80 p-3 text-right"
+                      >
+                        <PrdDocumentPreview blocks={pane.blocks} compact interactive={false} />
+                      </button>
+                      <div className="z-10 flex shrink-0 justify-end border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={pane.key === "ai" ? "primary" : "outline"}
+                          onClick={pane.onUse}
+                          className="shrink-0"
+                        >
+                          {pane.actionLabel}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {hasFinalSelection && (
+                <div className="mb-3 flex justify-end">
+                  <Button type="button" variant="outline" size="sm" onClick={handleReturnToComparison}>
+                    חזור להשוואת גרסאות
+                  </Button>
+                </div>
+              )}
+              <div className="max-h-[480px] overflow-y-auto">
+                <PrdDocumentPreview blocks={documentBlocks} className="mx-auto max-w-3xl" />
+              </div>
+            </>
+          )}
         </div>
       </section>
+
+      {isAdminView && (
+        <Card>
+          <CardHeader>
+            <CardTitle>סטטוס מסמך</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <select
+              value={projectStatus}
+              onChange={(e) => setProjectStatus(e.target.value as ProjectStatus)}
+              className="flex w-full max-w-sm rounded-lg border border-[#E0E0E0] bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] shadow-sm transition focus:border-[#5B4FE8] focus:outline-none focus:shadow-[0_0_0_3px_rgba(91,79,232,0.1)]"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-slate-500">
+              שינוי סטטוס נשמר בלחיצה על &quot;שמור שינויים&quot;. יצירת תרשים תסנכרן
+              סטטוס &quot;הושלם&quot; אוטומטית אם טרם נשמר.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {projectStatus === "completed" && (
+        <DiagramCard
+          projectId={projectId}
+          isAdminView={isAdminView}
+          hasUseCases={hasUseCases}
+          projectStatus={projectStatus}
+          wordDiagramInclusion={wordDiagramInclusion}
+          onWordDiagramInclusionChange={handleWordDiagramInclusionChange}
+        />
+      )}
+
+      {focusedPreview && llmOriginal && llmProposed && (
+        <LlmDraftPreviewModal
+          open
+          initialVersion={focusedPreview}
+          originalBlocks={originalPreviewBlocks}
+          aiBlocks={aiPreviewBlocks}
+          onUseOriginal={handleUseOriginal}
+          onUseAi={handleUseAi}
+          onClose={() => setFocusedPreview(null)}
+        />
+      )}
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white border border-[#E0E0E0] rounded-2xl px-4 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.07)]">
         <p className="text-sm text-slate-600">
