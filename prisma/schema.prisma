@@ -82,6 +82,7 @@ model File {
   size                Int?
   step_id             String?
   field_name          String?
+  spec_hash           String?
   uploaded_at         DateTime @default(now())
 }
 

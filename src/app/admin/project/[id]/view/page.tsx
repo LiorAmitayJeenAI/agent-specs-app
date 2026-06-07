@@ -16,6 +16,7 @@ import {
   formatDocumentValue,
   type WordExportBlock,
 } from "@/lib/wordExport";
+import { resolveDiagramWordBlocks } from "@/lib/diagram/resolveDiagramWordBlocksClient";
 import Sidebar from "@/components/layout/Sidebar";
 import StepAgentDetails from "@/components/steps/StepAgentDetails";
 import Step1UseCases from "@/components/steps/Step1UseCases";
@@ -266,7 +267,10 @@ export default function AdminProjectViewPage() {
       // 2. Generate Word document and upload to blob
       let wordUploadError: string | null = null;
       try {
-        const wordBlocks = buildWordBlocks(store);
+        const wordBlocks = [
+          ...buildWordBlocks(store),
+          ...(await resolveDiagramWordBlocks(projectId)),
+        ];
         const docxBlob = await createHebrewWordBlob(wordBlocks);
 
         const clientName = projectIntake.clientName.trim();

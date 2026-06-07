@@ -26,6 +26,11 @@ yarn-error.log*
 .env*.local
 .env
 
+# Cursor / local agent workspace files
+.cursor/rules/
+.claude/
+docs/superpowers/
+
 # vercel
 .vercel
 

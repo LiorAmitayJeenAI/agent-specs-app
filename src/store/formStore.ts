@@ -17,6 +17,7 @@ import type {
   AgentDetails,
   UploadedFileRef,
 } from "@/types";
+import type { LlmDraftSections } from "@/types/llmDraft";
 
 const lockedStepIds = new Set(LOCKED_FORM_STEP_IDS);
 
@@ -124,6 +125,7 @@ type FormSnapshot = {
   isAdminView: boolean;
   projectId: string | null;
   projectStatus: ProjectStatus;
+  llmDraftSelection: LlmDraftSelectionState | null;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
   currentStep: number;
@@ -134,6 +136,16 @@ type FormSnapshot = {
   successMetrics: SuccessMetric[];
 };
 
+export type LlmDraftSelectedVersion = "original" | "ai";
+
+export interface LlmDraftSelectionState {
+  projectId: string | null;
+  original: LlmDraftSections;
+  ai: LlmDraftSections;
+  selectedVersion: LlmDraftSelectedVersion;
+  editableSourceHash: string;
+}
+
 let _backup: FormSnapshot | null = null;
 
 // ─── Store Interface ───────────────────────────────────────────────────────────
@@ -143,6 +155,7 @@ interface FormStore {
   isAdminView: boolean;
   projectId: string | null;
   projectStatus: ProjectStatus;
+  llmDraftSelection: LlmDraftSelectionState | null;
   projectIntake: ProjectIntake;
   agentDetails: AgentDetails;
   currentStep: number;
@@ -155,6 +168,9 @@ interface FormStore {
   // Navigation
   setProjectId: (id: string | null) => void;
   completeLogin: () => void;
+  setLlmDraftSelection: (selection: LlmDraftSelectionState | null) => void;
+  updateSelectedLlmDraftSnapshot: (snapshot: LlmDraftSections) => void;
+  clearLlmDraftSelection: () => void;
   updateProjectIntake: (patch: Partial<ProjectIntake>) => void;
   updateAgentDetails: (patch: Partial<AgentDetails>) => void;
   goToStep: (step: number) => void;
@@ -222,6 +238,7 @@ const initialFormState = {
   isAdminView: false,
   projectId: null as string | null,
   projectStatus: "sent_to_client" as ProjectStatus,
+  llmDraftSelection: null as LlmDraftSelectionState | null,
   projectIntake: {
     clientName: "",
     documentAuthorName: "",
@@ -247,6 +264,18 @@ export const useFormStore = create<FormStore>()(
 
   setProjectId: (id) => set({ projectId: id }),
   completeLogin: () => set({ isLoginComplete: true }),
+  setLlmDraftSelection: (selection) => set({ llmDraftSelection: selection }),
+  updateSelectedLlmDraftSnapshot: (snapshot) =>
+    set((s) => {
+      if (!s.llmDraftSelection) return {};
+      return {
+        llmDraftSelection: {
+          ...s.llmDraftSelection,
+          [s.llmDraftSelection.selectedVersion]: snapshot,
+        },
+      };
+    }),
+  clearLlmDraftSelection: () => set({ llmDraftSelection: null }),
   updateProjectIntake: (patch) =>
     set((s) => ({ projectIntake: { ...s.projectIntake, ...patch } })),
   updateAgentDetails: (patch) =>
@@ -271,7 +300,7 @@ export const useFormStore = create<FormStore>()(
         ? Math.max(s.currentStep - 1, 1)
         : getNextUnlockedStep(s.currentStep, -1),
     })),
-  resetForm: () => set(initialFormState),
+  resetForm: () => set({ ...initialFormState, llmDraftSelection: null }),
 
   backupState: () => {
     const s = get();
@@ -280,6 +309,7 @@ export const useFormStore = create<FormStore>()(
       isAdminView: s.isAdminView,
       projectId: s.projectId,
       projectStatus: s.projectStatus,
+      llmDraftSelection: s.llmDraftSelection,
       projectIntake: s.projectIntake,
       agentDetails: s.agentDetails,
       currentStep: s.currentStep,
@@ -311,7 +341,12 @@ export const useFormStore = create<FormStore>()(
     set({
       isLoginComplete: true,
       isAdminView: true,
+      projectId: data.projectId,
       projectStatus: normalizedStatus,
+      llmDraftSelection:
+        get().llmDraftSelection?.projectId === data.projectId
+          ? get().llmDraftSelection
+          : null,
       projectIntake: {
         clientName: data.clientName,
         documentAuthorName: data.authorName,
@@ -672,6 +707,7 @@ export const useFormStore = create<FormStore>()(
       partialize: (state) => ({
         isLoginComplete: state.isLoginComplete,
         projectId: state.projectId,
+        llmDraftSelection: state.llmDraftSelection,
         projectIntake: state.projectIntake,
         agentDetails: state.agentDetails,
         currentStep: state.currentStep,
