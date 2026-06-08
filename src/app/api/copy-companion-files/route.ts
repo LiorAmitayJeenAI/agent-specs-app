@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { copyBlobInContainer } from "@/lib/azure-storage";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 
 interface CompanionFileRequest {
   files: { sourceBlobPath: string; fileName: string }[];
@@ -7,8 +8,14 @@ interface CompanionFileRequest {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAt = performance.now();
+  let targetFolder: string | undefined;
+  let requestedFiles: number | undefined;
+
   try {
     const body: CompanionFileRequest = await request.json();
+    targetFolder = body.targetFolder;
+    requestedFiles = Array.isArray(body.files) ? body.files.length : undefined;
 
     if (!body.files || !Array.isArray(body.files) || !body.targetFolder) {
       return NextResponse.json(
@@ -30,16 +37,34 @@ export async function POST(request: NextRequest) {
         );
         results.push(result);
       } catch (err) {
-        console.error(
-          `Failed to copy companion file ${file.sourceBlobPath}:`,
-          err
-        );
+        logError("companion file copy failed", err, {
+          route: "/api/copy-companion-files",
+          method: "POST",
+          sourceBlobPath: file.sourceBlobPath,
+          destPath,
+          targetFolder,
+        });
       }
     }
 
+    logInfo("companion files copied", {
+      route: "/api/copy-companion-files",
+      method: "POST",
+      targetFolder,
+      requestedFiles,
+      copiedFiles: results.length,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ success: true, copied: results.length });
   } catch (error) {
-    console.error("Copy companion files error:", error);
+    logError("copy companion files failed", error, {
+      route: "/api/copy-companion-files",
+      method: "POST",
+      targetFolder,
+      requestedFiles,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "Failed to copy companion files" },
       { status: 500 }

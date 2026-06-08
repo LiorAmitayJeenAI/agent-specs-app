@@ -98,6 +98,10 @@ AZURE_STORAGE_FOLDER_NAME="optional-folder-prefix"
 # Optional — default for `src/lib/admin-auth.ts` (not yet enforced on API routes)
 ADMIN_PASSWORD="your-admin-password"
 
+# Optional — structured JSON logs to stdout/stderr for Azure Container Apps
+LOG_LEVEL="info"
+LOG_SERVICE_NAME="agent-specs-app"
+
 # Optional — LLM draft polish on Summary step (Azure OpenAI)
 AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
 AZURE_OPENAI_API_KEY="your-api-key"
@@ -107,6 +111,8 @@ LLM_DRAFT_MODE="formal"
 ```
 
 Uses the same `AZURE_OPENAI_*` variables for **draw.io diagram generation** on completed specs (Summary step).
+
+Logs are emitted as structured JSON to stdout/stderr, which is the recommended pattern for Azure Container Apps. View them through Container Apps logs or Log Analytics instead of relying on files inside the container.
 
 ### Draw.io diagrams (completed specs)
 

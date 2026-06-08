@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import { deleteBlobByPath, deleteBlobsByPrefix, sanitizeFileName } from "@/lib/azure-storage";
+import { durationMs, logError, logInfo } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 
 interface AdminProjectPayload {
   clientName: string;
@@ -72,6 +73,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
   const { id } = await params;
 
   try {
@@ -88,6 +90,7 @@ export async function GET(
         data_sources: true,
         glossary: true,
         success_metrics: true,
+        requirement_documents: { select: { requirement_document_id: true } },
       },
     });
 
@@ -110,6 +113,7 @@ export async function GET(
       agentName: project.requested_agent_name,
       agentDescription: project.short_agent_description,
       createdAt: project.created_at.toISOString(),
+      requirementDocumentCount: project.requirement_documents.length,
       useCases: project.use_cases.map((uc) => ({
         id: uc.use_case_id,
         name: uc.use_case_name,
@@ -154,7 +158,12 @@ export async function GET(
       })),
     });
   } catch (error) {
-    console.error("Admin project detail error:", error);
+    logError("admin project detail load failed", error, {
+      route: "/api/admin/projects/[id]",
+      method: "GET",
+      projectId: id,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "שגיאה בטעינת הפרויקט" },
       { status: 500 }
@@ -166,10 +175,21 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
   const { id: projectId } = await params;
+  let nextStatus: ProjectStatus | undefined;
+  let useCaseCount: number | undefined;
+  let dataSourceCount: number | undefined;
+  let conceptCount: number | undefined;
+  let metricCount: number | undefined;
 
   try {
     const body: AdminProjectPayload = await request.json();
+    nextStatus = body.status;
+    useCaseCount = body.useCases?.length;
+    dataSourceCount = body.dataSources?.length;
+    conceptCount = body.concepts?.length;
+    metricCount = body.metrics?.length;
 
     if (
       !hasText(body.clientName) ||
@@ -347,9 +367,31 @@ export async function PUT(
       });
     });
 
+    logInfo("admin project updated", {
+      route: "/api/admin/projects/[id]",
+      method: "PUT",
+      projectId,
+      status: nextStatus ?? existingProject.status,
+      useCaseCount,
+      dataSourceCount,
+      conceptCount,
+      metricCount,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Admin update project detail error:", error);
+    logError("admin project update failed", error, {
+      route: "/api/admin/projects/[id]",
+      method: "PUT",
+      projectId,
+      status: nextStatus,
+      useCaseCount,
+      dataSourceCount,
+      conceptCount,
+      metricCount,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "שגיאה בעדכון הפרויקט" },
       { status: 500 }
@@ -361,6 +403,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
   const { id: projectId } = await params;
 
   try {
@@ -373,44 +416,65 @@ export async function DELETE(
       return NextResponse.json({ error: "הפרויקט לא נמצא" }, { status: 404 });
     }
 
-    // Delete blobs from Azure
-    const files = await prisma.file.findMany({
-      where: { related_entity_id: projectId },
-      select: { blob_url: true },
-    });
+    let blobCount = 0;
+    const skipExternalDeletion = process.env.E2E_DISABLE_EXTERNAL_SERVICES === "true";
 
-    const blobDeletions: Promise<void>[] = files
-      .filter((f) => f.blob_url)
-      .map((f) => deleteBlobByPath(f.blob_url).catch((err) => {
-        console.error(`Failed to delete blob ${f.blob_url}:`, err);
-      }));
+    if (!skipExternalDeletion) {
+      // Delete blobs from Azure
+      const files = await prisma.file.findMany({
+        where: { related_entity_id: projectId },
+        select: { blob_url: true },
+      });
+      blobCount = files.length;
 
-    const folderName = process.env.AZURE_STORAGE_FOLDER_NAME;
+      const blobDeletions: Promise<void>[] = files
+        .filter((f) => f.blob_url)
+        .map((f) => deleteBlobByPath(f.blob_url).catch((err) => {
+          logError("project blob delete failed", err, {
+            route: "/api/admin/projects/[id]",
+            method: "DELETE",
+            projectId,
+            blobPath: f.blob_url,
+          });
+        }));
 
-    // Delete uploads folder: {folder}/inquiries/{projectId}/
-    const uploadsPrefix = folderName
-      ? `${folderName}/inquiries/${projectId}/`
-      : `inquiries/${projectId}/`;
-    blobDeletions.push(
-      deleteBlobsByPrefix(uploadsPrefix).catch((err) => {
-        console.error(`Failed to delete blobs by prefix ${uploadsPrefix}:`, err);
-      }) as Promise<void>
-    );
+      const folderName = process.env.AZURE_STORAGE_FOLDER_NAME;
 
-    // Delete summary folder: {folder}/{clientName}/{agentName}/
-    if (project.client.client_name && project.requested_agent_name) {
-      const safeClientName = sanitizeFileName(project.client.client_name);
-      const safeAgentName = sanitizeFileName(project.requested_agent_name);
-      const summaryRoot = folderName ? `${folderName}/` : "lior/";
-      const summaryPrefix = `${summaryRoot}${safeClientName}/${safeAgentName}/`;
+      // Delete uploads folder: {folder}/inquiries/{projectId}/
+      const uploadsPrefix = folderName
+        ? `${folderName}/inquiries/${projectId}/`
+        : `inquiries/${projectId}/`;
       blobDeletions.push(
-        deleteBlobsByPrefix(summaryPrefix).catch((err) => {
-          console.error(`Failed to delete summary folder ${summaryPrefix}:`, err);
+        deleteBlobsByPrefix(uploadsPrefix).catch((err) => {
+          logError("project upload folder delete failed", err, {
+            route: "/api/admin/projects/[id]",
+            method: "DELETE",
+            projectId,
+            prefix: uploadsPrefix,
+          });
         }) as Promise<void>
       );
-    }
 
-    await Promise.all(blobDeletions);
+      // Delete summary folder: {folder}/{clientName}/{agentName}/
+      if (project.client.client_name && project.requested_agent_name) {
+        const safeClientName = sanitizeFileName(project.client.client_name);
+        const safeAgentName = sanitizeFileName(project.requested_agent_name);
+        const summaryRoot = folderName ? `${folderName}/` : "lior/";
+        const summaryPrefix = `${summaryRoot}${safeClientName}/${safeAgentName}/`;
+        blobDeletions.push(
+          deleteBlobsByPrefix(summaryPrefix).catch((err) => {
+            logError("project summary folder delete failed", err, {
+              route: "/api/admin/projects/[id]",
+              method: "DELETE",
+              projectId,
+              prefix: summaryPrefix,
+            });
+          }) as Promise<void>
+        );
+      }
+
+      await Promise.all(blobDeletions);
+    }
 
     // Delete all DB records in a transaction
     await prisma.$transaction(async (tx) => {
@@ -425,9 +489,23 @@ export async function DELETE(
       await tx.project.delete({ where: { project_id: projectId } });
     });
 
+    logInfo("admin project deleted", {
+      route: "/api/admin/projects/[id]",
+      method: "DELETE",
+      projectId,
+      blobCount,
+      externalDeletionSkipped: skipExternalDeletion,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Admin delete project error:", error);
+    logError("admin project delete failed", error, {
+      route: "/api/admin/projects/[id]",
+      method: "DELETE",
+      projectId,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "שגיאה במחיקת הפרויקט" },
       { status: 500 }

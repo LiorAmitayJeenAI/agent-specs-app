@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadFileToBlob } from "@/lib/azure-storage";
+import { durationMs, logError, logInfo, logWarn } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -24,13 +25,22 @@ const getTextFormField = (formData: FormData, fieldName: string) => {
 };
 
 export async function POST(request: NextRequest) {
+  const startedAt = performance.now();
+  let projectId: string | undefined;
+  let stepId: string | undefined;
+  let fieldName: string | undefined;
+  let fileName: string | undefined;
+  let fileSize: number | undefined;
+  let mimeType: string | undefined;
+  let isSummary = false;
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const projectId = getTextFormField(formData, "projectId");
-    const stepId = getTextFormField(formData, "stepId");
-    const fieldName = getTextFormField(formData, "fieldName");
-    const isSummary = formData.get("isSummary") === "true";
+    projectId = getTextFormField(formData, "projectId");
+    stepId = getTextFormField(formData, "stepId");
+    fieldName = getTextFormField(formData, "fieldName");
+    isSummary = formData.get("isSummary") === "true";
     let clientName = getTextFormField(formData, "clientName");
     let requestedAgentName = getTextFormField(formData, "requestedAgentName");
     let documentAuthorName = getTextFormField(formData, "documentAuthorName");
@@ -39,7 +49,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "לא נבחר קובץ" }, { status: 400 });
     }
 
+    fileName = file.name;
+    fileSize = file.size;
+    mimeType = file.type;
+
     if (file.size > MAX_FILE_SIZE) {
+      logWarn("file upload rejected: file too large", {
+        route: "/api/file-upload",
+        method: "POST",
+        projectId,
+        stepId,
+        fieldName,
+        fileName,
+        fileSize,
+        mimeType,
+        isSummary,
+        maxFileSize: MAX_FILE_SIZE,
+      });
       return NextResponse.json(
         { error: `הקובץ גדול מדי. גודל מקסימלי: ${MAX_FILE_SIZE / (1024 * 1024)}MB` },
         { status: 400 }
@@ -47,6 +73,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.type) && !isSummary) {
+      logWarn("file upload rejected: unsupported mime type", {
+        route: "/api/file-upload",
+        method: "POST",
+        projectId,
+        stepId,
+        fieldName,
+        fileName,
+        fileSize,
+        mimeType,
+        isSummary,
+      });
       return NextResponse.json(
         { error: "סוג הקובץ אינו נתמך" },
         { status: 400 }
@@ -149,6 +186,21 @@ export async function POST(request: NextRequest) {
       savedFile = await prisma.file.create({ data: fileData });
     }
 
+    logInfo("file uploaded", {
+      route: "/api/file-upload",
+      method: "POST",
+      projectId,
+      stepId,
+      fieldName,
+      fileId: savedFile.file_id,
+      fileName: result.fileName,
+      fileSize: result.size,
+      mimeType: result.mimeType,
+      relatedEntityType,
+      isSummary,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({
       fileId: savedFile.file_id,
       blobPath: result.blobPath,
@@ -160,7 +212,18 @@ export async function POST(request: NextRequest) {
       stepId: stepId || null,
     });
   } catch (error) {
-    console.error("File upload error:", error);
+    logError("file upload failed", error, {
+      route: "/api/file-upload",
+      method: "POST",
+      projectId,
+      stepId,
+      fieldName,
+      fileName,
+      fileSize,
+      mimeType,
+      isSummary,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "אירעה שגיאה בהעלאת הקובץ" },
       { status: 500 }

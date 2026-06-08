@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 interface CreateProjectStubBody {
@@ -8,8 +9,14 @@ interface CreateProjectStubBody {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAt = performance.now();
+  let clientName: string | undefined;
+  let projectName: string | undefined;
+
   try {
     const body: CreateProjectStubBody = await request.json();
+    clientName = body.clientName;
+    projectName = body.projectName;
 
     if (!body.clientName?.trim()) {
       return NextResponse.json(
@@ -41,9 +48,24 @@ export async function POST(request: NextRequest) {
       select: { project_id: true },
     });
 
+    logInfo("admin project created", {
+      route: "/api/admin/projects",
+      method: "POST",
+      projectId: project.project_id,
+      clientName,
+      projectName,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ projectId: project.project_id });
   } catch (error) {
-    console.error("Create project stub error:", error);
+    logError("admin project create failed", error, {
+      route: "/api/admin/projects",
+      method: "POST",
+      clientName,
+      projectName,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "שגיאה ביצירת הפרויקט" },
       { status: 500 }
@@ -52,6 +74,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(_request: NextRequest) {
+  const startedAt = performance.now();
+
   try {
     const projects = await prisma.project.findMany({
       orderBy: { updated_at: "desc" },
@@ -86,7 +110,11 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Admin projects list error:", error);
+    logError("admin projects list failed", error, {
+      route: "/api/admin/projects",
+      method: "GET",
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "שגיאה בטעינת הפרויקטים" },
       { status: 500 }

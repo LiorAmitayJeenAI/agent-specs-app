@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 interface MetricPayload {
@@ -13,7 +14,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
   const { id: projectId } = await params;
+  let metricCount: number | undefined;
 
   try {
     const body: { metrics: MetricPayload[] } = await request.json();
@@ -24,6 +27,7 @@ export async function PUT(
         { status: 400 }
       );
     }
+    metricCount = body.metrics.length;
 
     const project = await prisma.project.findUnique({
       where: { project_id: projectId },
@@ -52,9 +56,23 @@ export async function PUT(
       }
     });
 
+    logInfo("admin project metrics updated", {
+      route: "/api/admin/projects/[id]/metrics",
+      method: "PUT",
+      projectId,
+      metricCount,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Admin update metrics error:", error);
+    logError("admin project metrics update failed", error, {
+      route: "/api/admin/projects/[id]/metrics",
+      method: "PUT",
+      projectId,
+      metricCount,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "שגיאה בעדכון מדדי ההצלחה" },
       { status: 500 }

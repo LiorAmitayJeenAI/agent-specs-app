@@ -55,7 +55,7 @@ model UseCase {
   notes           String?
   created_at      DateTime        @default(now())
   updated_at      DateTime        @updatedAt
-  project         Project         @relation(fields: [project_id], references: [project_id])
+  project         Project         @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   flow_steps      FlowStep[]
   qa_pairs        UseCaseQAPair[]
   success_metrics SuccessMetric[]
@@ -69,7 +69,7 @@ model FlowStep {
   has_calculation     Boolean @default(false)
   calculation_details String?
   notes               String?
-  use_case            UseCase @relation(fields: [use_case_id], references: [use_case_id])
+  use_case            UseCase @relation(fields: [use_case_id], references: [use_case_id], onDelete: Cascade)
 }
 
 model File {
@@ -96,8 +96,8 @@ model UseCaseQAPair {
   data_source_id  String?
   created_at      DateTime    @default(now())
   updated_at      DateTime    @updatedAt
-  use_case        UseCase     @relation(fields: [use_case_id], references: [use_case_id])
-  data_source     DataSource? @relation(fields: [data_source_id], references: [data_source_id])
+  use_case        UseCase     @relation(fields: [use_case_id], references: [use_case_id], onDelete: Cascade)
+  data_source     DataSource? @relation(fields: [data_source_id], references: [data_source_id], onDelete: SetNull)
 }
 
 model DataSource {
@@ -109,7 +109,7 @@ model DataSource {
   access_method  String?
   created_at     DateTime        @default(now())
   updated_at     DateTime        @updatedAt
-  project        Project         @relation(fields: [project_id], references: [project_id])
+  project        Project         @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   qa_pairs       UseCaseQAPair[]
 }
 
@@ -121,7 +121,7 @@ model GlossaryTerm {
   examples   String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-  project    Project  @relation(fields: [project_id], references: [project_id])
+  project    Project  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
 }
 
 model SuccessMetric {
@@ -134,8 +134,8 @@ model SuccessMetric {
   priority           String   @default("medium")
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-  project            Project  @relation(fields: [project_id], references: [project_id])
-  use_case           UseCase? @relation(fields: [use_case_id], references: [use_case_id])
+  project            Project  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  use_case           UseCase? @relation(fields: [use_case_id], references: [use_case_id], onDelete: SetNull)
 }
 
 model RequirementDocument {
@@ -146,5 +146,5 @@ model RequirementDocument {
   version                 Int      @default(1)
   created_at              DateTime @default(now())
   updated_at              DateTime @updatedAt
-  project                 Project  @relation(fields: [project_id], references: [project_id])
+  project                 Project  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
 }

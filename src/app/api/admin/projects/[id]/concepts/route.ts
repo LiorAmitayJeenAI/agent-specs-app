@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 interface ConceptPayload {
@@ -12,7 +13,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
   const { id: projectId } = await params;
+  let conceptCount: number | undefined;
 
   try {
     const body: { concepts: ConceptPayload[] } = await request.json();
@@ -23,6 +26,7 @@ export async function PUT(
         { status: 400 }
       );
     }
+    conceptCount = body.concepts.length;
 
     const project = await prisma.project.findUnique({
       where: { project_id: projectId },
@@ -48,9 +52,23 @@ export async function PUT(
       }
     });
 
+    logInfo("admin project concepts updated", {
+      route: "/api/admin/projects/[id]/concepts",
+      method: "PUT",
+      projectId,
+      conceptCount,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Admin update concepts error:", error);
+    logError("admin project concepts update failed", error, {
+      route: "/api/admin/projects/[id]/concepts",
+      method: "PUT",
+      projectId,
+      conceptCount,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "שגיאה בעדכון המושגים" },
       { status: 500 }

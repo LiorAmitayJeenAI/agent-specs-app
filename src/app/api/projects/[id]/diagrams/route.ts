@@ -5,6 +5,7 @@ import {
   hashDiagramPayload,
   type DiagramProjectInclude,
 } from "@/lib/llm/diagramPayload";
+import { durationMs, logError } from "@/lib/logger";
 import type { DiagramMeta, DiagramType, ProjectDiagramsResponse } from "@/types/diagram";
 
 const DIAGRAM_TYPES: DiagramType[] = ["flow", "architecture"];
@@ -47,6 +48,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
   const { id } = await params;
 
   try {
@@ -96,7 +98,12 @@ export async function GET(
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("GET diagrams error:", error);
+    logError("project diagrams list failed", error, {
+      route: "/api/projects/[id]/diagrams",
+      method: "GET",
+      projectId: id,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json({ error: "שגיאה בטעינת התרשימים" }, { status: 500 });
   }
 }
