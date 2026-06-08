@@ -7,6 +7,7 @@ import {
 } from "@/lib/llm/diagramPayload";
 import { validateDrawioXml } from "@/lib/diagram/drawioValidate";
 import { persistDiagram } from "@/lib/diagram/persistDiagram";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 import type { DiagramType, SaveDiagramRequest } from "@/types/diagram";
 
 const projectInclude = {
@@ -30,8 +31,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
   const { id } = await params;
-
   let body: SaveDiagramRequest;
   try {
     body = (await request.json()) as SaveDiagramRequest;
@@ -42,6 +43,7 @@ export async function PUT(
   if (!isDiagramType(body.type)) {
     return NextResponse.json({ error: "סוג תרשים לא תקין" }, { status: 400 });
   }
+  const diagramType: DiagramType = body.type;
 
   if (typeof body.xml !== "string" || !body.xml.trim()) {
     return NextResponse.json({ error: "תוכן התרשים חסר" }, { status: 400 });
@@ -80,9 +82,25 @@ export async function PUT(
       specHash,
     });
 
+    logInfo("admin diagram saved", {
+      route: "/api/admin/projects/[id]/diagrams",
+      method: "PUT",
+      projectId: id,
+      diagramType,
+      fileId: diagram.fileId,
+      specHash,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ diagram });
   } catch (error) {
-    console.error("Save diagram error:", error);
+    logError("admin diagram save failed", error, {
+      route: "/api/admin/projects/[id]/diagrams",
+      method: "PUT",
+      projectId: id,
+      diagramType,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json({ error: "לא הצלחנו לשמור את התרשים" }, { status: 500 });
   }
 }

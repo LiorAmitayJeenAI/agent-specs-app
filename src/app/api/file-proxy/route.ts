@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBlobStream } from "@/lib/azure-storage";
+import { durationMs, logError, logWarn } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
+  const startedAt = performance.now();
   const path = request.nextUrl.searchParams.get("path");
 
   if (!path) {
@@ -9,6 +11,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (path.includes("..") || path.startsWith("/")) {
+    logWarn("file proxy rejected invalid path", {
+      route: "/api/file-proxy",
+      method: "GET",
+      path,
+    });
     return NextResponse.json({ error: "נתיב לא חוקי" }, { status: 400 });
   }
 
@@ -36,7 +43,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("File proxy error:", error);
+    logError("file proxy failed", error, {
+      route: "/api/file-proxy",
+      method: "GET",
+      path,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "אירעה שגיאה בטעינת הקובץ" },
       { status: 500 }

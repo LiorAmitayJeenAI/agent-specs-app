@@ -4,6 +4,7 @@ import {
   polishDraftWithAzure,
   resolveLlmDraftMode,
 } from "@/lib/llm/azureOpenAI";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 import type { LlmDraftPolishRequest, LlmDraftSections } from "@/types/llmDraft";
 
 const isString = (value: unknown): value is string => typeof value === "string";
@@ -106,6 +107,8 @@ function validateSections(input: unknown): input is LlmDraftSections {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAt = performance.now();
+
   if (!isAzureOpenAiConfigured()) {
     return NextResponse.json({ error: "שירות AI לא מוגדר" }, { status: 503 });
   }
@@ -125,9 +128,24 @@ export async function POST(request: NextRequest) {
 
   try {
     const sections = await polishDraftWithAzure(body.sections, mode);
+    logInfo("llm draft polished", {
+      route: "/api/llm/polish-draft",
+      method: "POST",
+      mode,
+      useCases: body.sections.useCases.length,
+      dataSources: body.sections.dataSources.length,
+      concepts: body.sections.concepts.length,
+      metrics: body.sections.metrics.length,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json({ sections, mode });
   } catch (error) {
-    console.error("LLM polish-draft error:", error);
+    logError("llm draft polish failed", error, {
+      route: "/api/llm/polish-draft",
+      method: "POST",
+      mode,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "לא הצלחנו לשפר את הטיוטה. נסה שוב בעוד רגע." },
       { status: 502 }

@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
+import { createPrismaProxy } from "@/lib/prismaProxy";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -38,9 +39,4 @@ function createPrismaClient(): PrismaClient {
   return client;
 }
 
-export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, prop) {
-    const client = createPrismaClient();
-    return (client as unknown as Record<string | symbol, unknown>)[prop];
-  },
-});
+export const prisma = createPrismaProxy<PrismaClient>(createPrismaClient);

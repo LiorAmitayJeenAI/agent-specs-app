@@ -7,6 +7,7 @@ import {
   type DiagramProjectInclude,
 } from "@/lib/llm/diagramPayload";
 import { persistDiagram } from "@/lib/diagram/persistDiagram";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 import type { DiagramType, GenerateDiagramRequest } from "@/types/diagram";
 
 const projectInclude = {
@@ -30,12 +31,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
+
   if (!isAzureOpenAiConfigured()) {
     return NextResponse.json({ error: "שירות AI לא מוגדר" }, { status: 503 });
   }
 
   const { id } = await params;
-
   let body: GenerateDiagramRequest;
   try {
     body = (await request.json()) as GenerateDiagramRequest;
@@ -46,6 +48,7 @@ export async function POST(
   if (!isDiagramType(body.type)) {
     return NextResponse.json({ error: "סוג תרשים לא תקין" }, { status: 400 });
   }
+  const diagramType: DiagramType = body.type;
 
   try {
     const project = await prisma.project.findUnique({
@@ -93,9 +96,27 @@ export async function POST(
       specHash,
     });
 
+    logInfo("admin diagram generated", {
+      route: "/api/admin/projects/[id]/generate-diagram",
+      method: "POST",
+      projectId: id,
+      diagramType,
+      fileId: diagram.fileId,
+      specHash,
+      useCases: payload.useCases.length,
+      dataSources: payload.dataSources.length,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json({ diagram });
   } catch (error) {
-    console.error("Generate diagram error:", error);
+    logError("admin diagram generation failed", error, {
+      route: "/api/admin/projects/[id]/generate-diagram",
+      method: "POST",
+      projectId: id,
+      diagramType,
+      durationMs: durationMs(startedAt),
+    });
     if (error instanceof Error && error.name === "AbortError") {
       return NextResponse.json(
         { error: "יצירת התרשים ארכה יותר מדי. נסה שוב." },

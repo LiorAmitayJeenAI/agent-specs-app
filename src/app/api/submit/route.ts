@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
+import { durationMs, logError, logInfo } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import type { FormOutput } from "@/types";
 
@@ -95,8 +96,16 @@ function buildMetricsData(body: FormOutput) {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAt = performance.now();
+  let projectId: string | undefined;
+  let clientName: string | undefined;
+  let requestedAgentName: string | undefined;
+
   try {
     const body: FormOutput = await request.json();
+    projectId = body.projectId;
+    clientName = body.projectIntake?.clientName;
+    requestedAgentName = body.agentDetails?.requestedAgentName;
 
     if (
       !body.projectIntake?.clientName ||
@@ -248,6 +257,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    logInfo("client form submitted", {
+      route: "/api/submit",
+      method: "POST",
+      projectId: savedProjectId,
+      clientId: savedClientId,
+      clientName,
+      requestedAgentName,
+      useCases: body.useCases.length,
+      dataSources: body.dataSources.length,
+      concepts: body.concepts.length,
+      successMetrics: body.successMetrics.length,
+      uploadedFiles: body.uploadedFiles?.length ?? 0,
+      durationMs: durationMs(startedAt),
+    });
+
     return NextResponse.json(
       {
         success: true,
@@ -269,7 +293,14 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Submit error:", error);
+    logError("client form submit failed", error, {
+      route: "/api/submit",
+      method: "POST",
+      projectId,
+      clientName,
+      requestedAgentName,
+      durationMs: durationMs(startedAt),
+    });
     return NextResponse.json(
       { error: "אירעה שגיאה בעיבוד הבקשה" },
       { status: 500 }
