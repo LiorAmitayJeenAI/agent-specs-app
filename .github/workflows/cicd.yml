@@ -1,0 +1,21 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  cicd:
+    uses: JeenAI-Team/cicd-templates/.github/workflows/build-push-deploy-webapp-ca.yml@main
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
+    with:
+      image_name: agent-specs-app-mono
+      azure_app_name: ${{ vars.AZURE_BACKEND_APP_NAME }}
+      resource_group: ${{ vars.AZURE_RESOURCE_GROUP }}
+      deploy_type: containerapp
+      snyk_language: node
+    secrets: inherit
