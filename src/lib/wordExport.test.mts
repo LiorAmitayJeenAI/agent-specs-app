@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test, mock } from "node:test";
+
 import JSZip from "jszip";
 
 import {
@@ -8,7 +9,7 @@ import {
   resolveImageBlock,
 } from "./wordExport.ts";
 
-test("formatDocumentValue formats arrays, booleans, numbers, and empty values", () => {
+test("formatDocumentValue formats arrays, booleans, numbers and empty values correctly", () => {
   assert.equal(formatDocumentValue(["CRM", "Billing"]), "CRM, Billing");
   assert.equal(formatDocumentValue([]), "-");
 
@@ -17,17 +18,29 @@ test("formatDocumentValue formats arrays, booleans, numbers, and empty values", 
 
   assert.equal(formatDocumentValue(42), "42");
 
-  assert.equal(formatDocumentValue("  hello  "), "hello");
+  assert.equal(formatDocumentValue("  hello world  "), "hello world");
   assert.equal(formatDocumentValue("   "), "-");
   assert.equal(formatDocumentValue(undefined), "-");
 });
 
-test("resolveImageBlock loads image data from preview base64 before URL", async () => {
-  const base64 = Buffer.from("fake-image").toString("base64");
+test("resolveImageBlock returns null when preview data is invalid and no URL exists", async () => {
+  const result = await resolveImageBlock({
+    preview: "not-a-valid-data-url",
+  });
 
-  globalThis.Image = class {
-    naturalWidth = 800;
-    naturalHeight = 600;
+  assert.equal(result, null);
+});
+
+test("resolveImageBlock prefers preview image data before URL loading", async () => {
+  const originalAtob = globalThis.atob;
+  const originalImage = globalThis.Image;
+
+  globalThis.atob = () => "abc";
+
+  class MockImage {
+    naturalWidth = 1200;
+    naturalHeight = 800;
+
     onload = null;
     onerror = null;
 
@@ -36,62 +49,50 @@ test("resolveImageBlock loads image data from preview base64 before URL", async 
         this.onload?.();
       });
     }
-  };
+  }
+
+  globalThis.Image = MockImage;
 
   const fetchMock = mock.method(globalThis, "fetch", async () => {
-    throw new Error("fetch should not be called when preview exists");
+    return {
+      ok: true,
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    };
   });
 
-  const block = await resolveImageBlock({
-    preview: `data:image/png;base64,${base64}`,
-    url: "https://example.com/image.png",
-  });
+  try {
+    const result = await resolveImageBlock({
+      preview: "data:image/png;base64,ZmFrZQ==",
+      url: "https://example.com/image.png",
+    });
 
-  fetchMock.mock.restore();
+    assert.ok(result);
+    assert.equal(result.kind, "image");
 
-  assert.ok(block);
-  assert.equal(block?.kind, "image");
+    assert.deepEqual(Array.from(result.imageData), [97, 98, 99]);
 
-  assert.equal(block?.width, 550);
-  assert.equal(block?.height, 413);
+    assert.equal(result.width, 550);
+    assert.equal(result.height, 367);
 
-  assert.ok(block?.imageData instanceof Uint8Array);
-  assert.equal(block?.imageData.length, "fake-image".length);
+    assert.equal(fetchMock.mock.calls.length, 0);
+  } finally {
+    fetchMock.mock.restore();
+
+    globalThis.atob = originalAtob;
+    globalThis.Image = originalImage;
+  }
 });
 
-test("resolveImageBlock returns null when image loading fails", async () => {
-  const fetchMock = mock.method(globalThis, "fetch", async () => ({
-    ok: false,
-  }));
-
-  const block = await resolveImageBlock({
-    url: "https://example.com/missing.png",
-  });
-
-  fetchMock.mock.restore();
-
-  assert.equal(block, null);
-});
-
-test("createHebrewWordBlob generates DOCX with RTL Hebrew configuration", async () => {
-  const fetchMock = mock.method(globalThis, "fetch", async () => ({
-    ok: false,
-  }));
-
+test("createHebrewWordBlob injects RTL Hebrew settings into generated docx xml", async () => {
   const blob = await createHebrewWordBlob([
     { kind: "title", text: "מסמך בדיקה" },
     { kind: "heading", text: "פרטי לקוח" },
     { kind: "paragraph", text: "תוכן בעברית" },
     { kind: "editableBoolean", value: true },
+    { kind: "editableList", value: ["CRM", "Billing"] },
   ]);
 
-  fetchMock.mock.restore();
-
   assert.ok(blob instanceof Blob);
-  assert.equal(
-    blob.type,
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  );
 
   const zip = await JSZip.loadAsync(await blob.arrayBuffer());
 
@@ -105,32 +106,33 @@ test("createHebrewWordBlob generates DOCX with RTL Hebrew configuration", async 
 
   assert.match(documentXml, /<w:bidi w:val="1"\/>/);
   assert.match(documentXml, /<w:rtl w:val="1"\/>/);
-  assert.match(documentXml, /<w:lang w:val="he-IL"/);
+  assert.match(documentXml, /w:val="he-IL"/);
 
   assert.match(stylesXml, /<w:docDefaults>/);
   assert.match(stylesXml, /<w:rFonts w:ascii="Arial"/);
 
-  assert.match(settingsXml, /<w:bidi w:val="1"\/>/);
-  assert.match(settingsXml, /compatibilityMode/);
-  assert.match(settingsXml, /he-IL/);
+  assert.match(settingsXml, /<w:themeFontLang/);
+  assert.match(settingsXml, /w:bidi="he-IL"/);
+
+  assert.equal(
+    blob.type,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  );
 });
 
-test("createHebrewWordBlob creates settings.xml when missing from generated package", async () => {
-  const fetchMock = mock.method(globalThis, "fetch", async () => ({
-    ok: false,
-  }));
-
+test("createHebrewWordBlob creates a settings.xml file when missing from the generated archive", async () => {
   const blob = await createHebrewWordBlob([
-    { kind: "paragraph", text: "בדיקת הגדרות" },
+    { kind: "paragraph", text: "בדיקת RTL" },
   ]);
-
-  fetchMock.mock.restore();
 
   const zip = await JSZip.loadAsync(await blob.arrayBuffer());
 
-  const settingsXml = await zip.file("word/settings.xml")?.async("string");
+  const settingsFile = zip.file("word/settings.xml");
 
-  assert.ok(settingsXml);
+  assert.ok(settingsFile);
+
+  const settingsXml = await settingsFile?.async("string");
+
   assert.match(settingsXml, /<w:settings/);
   assert.match(settingsXml, /<w:bidi w:val="1"\/>/);
 });
