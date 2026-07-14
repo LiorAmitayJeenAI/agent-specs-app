@@ -1,12 +1,23 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { afterEach, test } from "node:test";
 
 import JSZip from "jszip";
 
 import {
   createHebrewWordBlob,
   formatDocumentValue,
+  resolveImageBlock,
 } from "./wordExport.ts";
+
+const ORIGINAL_FETCH = global.fetch;
+const ORIGINAL_IMAGE = global.Image;
+const ORIGINAL_ATOB = global.atob;
+
+afterEach(() => {
+  global.fetch = ORIGINAL_FETCH;
+  global.Image = ORIGINAL_IMAGE;
+  global.atob = ORIGINAL_ATOB;
+});
 
 test("formatDocumentValue formats arrays, booleans, numbers, and empty values correctly", () => {
   assert.equal(formatDocumentValue(["CRM", "Billing"]), "CRM, Billing");
@@ -23,6 +34,93 @@ test("formatDocumentValue formats arrays, booleans, numbers, and empty values co
   assert.equal(formatDocumentValue(""), "-");
   assert.equal(formatDocumentValue("   "), "-");
   assert.equal(formatDocumentValue(undefined), "-");
+});
+
+test("resolveImageBlock prefers preview image data before URL loading", async () => {
+  let fetchCalled = false;
+
+  global.fetch = async () => {
+    fetchCalled = true;
+
+    return {
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    } as Response;
+  };
+
+  global.atob = (value: string) => {
+    assert.equal(value, "QUJD");
+    return "ABC";
+  };
+
+  class MockImage {
+    naturalWidth = 320;
+    naturalHeight = 180;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+
+    set src(_value: string) {
+      this.onload?.();
+    }
+  }
+
+  global.Image = MockImage as typeof Image;
+
+  const result = await resolveImageBlock({
+    preview: "data:image/png;base64,QUJD",
+    url: "https://example.com/image.png",
+  });
+
+  assert.equal(fetchCalled, false);
+
+  assert.deepEqual(result, {
+    kind: "image",
+    imageData: new Uint8Array([65, 66, 67]),
+    width: 320,
+    height: 180,
+  });
+});
+
+test("resolveImageBlock scales oversized images to maximum width", async () => {
+  global.fetch = async () =>
+    ({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(4),
+    }) as Response;
+
+  class MockImage {
+    naturalWidth = 1200;
+    naturalHeight = 600;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+
+    set src(_value: string) {
+      this.onload?.();
+    }
+  }
+
+  global.Image = MockImage as typeof Image;
+
+  const result = await resolveImageBlock({
+    url: "https://example.com/diagram.png",
+  });
+
+  assert.equal(result?.kind, "image");
+  assert.equal(result?.width, 550);
+  assert.equal(result?.height, 275);
+});
+
+test("resolveImageBlock returns null when fetch response is not ok", async () => {
+  global.fetch = async () =>
+    ({
+      ok: false,
+    }) as Response;
+
+  const result = await resolveImageBlock({
+    url: "https://example.com/missing-image.png",
+  });
+
+  assert.equal(result, null);
 });
 
 test("createHebrewWordBlob injects RTL and Hebrew language settings into the generated DOCX", async () => {
