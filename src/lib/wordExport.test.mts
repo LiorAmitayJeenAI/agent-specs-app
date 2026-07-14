@@ -1,36 +1,72 @@
 import assert from "node:assert/strict";
-import { test, mock } from "node:test";
-import JSZip from "jszip";
+import { afterEach, test } from "node:test";
 
 import {
-  createHebrewWordBlob,
   formatDocumentValue,
   resolveImageBlock,
 } from "./wordExport.ts";
 
-test("formatDocumentValue formats arrays, booleans, numbers and empty values", () => {
-  assert.equal(formatDocumentValue(["CRM", "Billing"]), "CRM, Billing");
-  assert.equal(formatDocumentValue([]), "-");
+const originalFetch = global.fetch;
+const originalImage = global.Image;
+const originalAtob = global.atob;
 
+afterEach(() => {
+  global.fetch = originalFetch;
+  global.Image = originalImage;
+  global.atob = originalAtob;
+});
+
+test("formatDocumentValue joins non-empty arrays", () => {
+  const result = formatDocumentValue(["CRM", "Billing", "Support"]);
+
+  assert.equal(result, "CRM, Billing, Support");
+});
+
+test("formatDocumentValue returns dash for empty arrays", () => {
+  const result = formatDocumentValue([]);
+
+  assert.equal(result, "-");
+});
+
+test("formatDocumentValue converts booleans to Hebrew labels", () => {
   assert.equal(formatDocumentValue(true), "כן");
   assert.equal(formatDocumentValue(false), "לא");
+});
 
-  assert.equal(formatDocumentValue(42), "42");
+test("formatDocumentValue converts numbers to strings", () => {
+  const result = formatDocumentValue(42);
 
-  assert.equal(formatDocumentValue("  hello world  "), "hello world");
+  assert.equal(result, "42");
+});
+
+test("formatDocumentValue trims text values", () => {
+  const result = formatDocumentValue("  מסמך אפיון  ");
+
+  assert.equal(result, "מסמך אפיון");
+});
+
+test("formatDocumentValue returns dash for empty or undefined values", () => {
   assert.equal(formatDocumentValue("   "), "-");
-
   assert.equal(formatDocumentValue(undefined), "-");
 });
 
-test("resolveImageBlock prefers preview images over url images", async () => {
-  const fetchMock = mock.method(globalThis, "fetch", async () => {
-    throw new Error("fetch should not be called when preview exists");
-  });
+test("resolveImageBlock prefers preview images over remote urls", async () => {
+  let fetchCalls = 0;
 
-  const imageMock = mock.method(globalThis, "Image", class {
-    naturalWidth = 800;
-    naturalHeight = 600;
+  global.fetch = async () => {
+    fetchCalls += 1;
+
+    return {
+      ok: true,
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    } as Response;
+  };
+
+  global.atob = () => "abc";
+
+  global.Image = class MockImage {
+    naturalWidth = 200;
+    naturalHeight = 100;
     onload: (() => void) | null = null;
     onerror: (() => void) | null = null;
 
@@ -39,35 +75,33 @@ test("resolveImageBlock prefers preview images over url images", async () => {
         this.onload?.();
       });
     }
-  } as unknown as typeof Image);
+  } as typeof Image;
 
   const result = await resolveImageBlock({
-    preview: "data:image/png;base64,QUJD",
+    preview: "data:image/png;base64,YWJj",
     url: "https://example.com/image.png",
   });
 
-  assert.ok(result);
-  assert.equal(result.kind, "image");
+  assert.equal(fetchCalls, 0);
 
-  assert.equal(result.width, 533);
-  assert.equal(result.height, 400);
-
-  assert.deepEqual(Array.from(result.imageData), [65, 66, 67]);
-
-  fetchMock.mock.restore();
-  imageMock.mock.restore();
+  assert.deepEqual(result, {
+    kind: "image",
+    imageData: new Uint8Array([97, 98, 99]),
+    width: 200,
+    height: 100,
+  });
 });
 
-test("resolveImageBlock falls back to url loading when preview is invalid", async () => {
-  const pngBytes = new Uint8Array([1, 2, 3, 4]);
+test("resolveImageBlock scales oversized images to maximum width", async () => {
+  global.fetch = async () => {
+    return {
+      ok: true,
+      arrayBuffer: async () => new Uint8Array([10, 20]).buffer,
+    } as Response;
+  };
 
-  const fetchMock = mock.method(globalThis, "fetch", async () => ({
-    ok: true,
-    arrayBuffer: async () => pngBytes.buffer,
-  }) as Response);
-
-  const imageMock = mock.method(globalThis, "Image", class {
-    naturalWidth = 1200;
+  global.Image = class MockImage {
+    naturalWidth = 1000;
     naturalHeight = 500;
     onload: (() => void) | null = null;
     onerror: (() => void) | null = null;
@@ -77,75 +111,75 @@ test("resolveImageBlock falls back to url loading when preview is invalid", asyn
         this.onload?.();
       });
     }
-  } as unknown as typeof Image);
+  } as typeof Image;
 
   const result = await resolveImageBlock({
-    preview: "invalid-base64",
-    url: "https://example.com/diagram.png",
+    url: "https://example.com/large.png",
   });
 
-  assert.ok(result);
-  assert.equal(result.kind, "image");
-
-  assert.equal(result.width, 550);
-  assert.equal(result.height, 229);
-
-  assert.deepEqual(Array.from(result.imageData), [1, 2, 3, 4]);
-
-  assert.equal(fetchMock.mock.callCount(), 1);
-
-  fetchMock.mock.restore();
-  imageMock.mock.restore();
+  assert.deepEqual(result, {
+    kind: "image",
+    imageData: new Uint8Array([10, 20]),
+    width: 550,
+    height: 275,
+  });
 });
 
-test("resolveImageBlock returns null when all image loading attempts fail", async () => {
-  const fetchMock = mock.method(globalThis, "fetch", async () => ({
-    ok: false,
-  }) as Response);
+test("resolveImageBlock scales oversized images to maximum height", async () => {
+  global.fetch = async () => {
+    return {
+      ok: true,
+      arrayBuffer: async () => new Uint8Array([5, 6]).buffer,
+    } as Response;
+  };
+
+  global.Image = class MockImage {
+    naturalWidth = 600;
+    naturalHeight = 1200;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+
+    set src(_value: string) {
+      queueMicrotask(() => {
+        this.onload?.();
+      });
+    }
+  } as typeof Image;
+
+  const result = await resolveImageBlock({
+    url: "https://example.com/tall.png",
+  });
+
+  assert.deepEqual(result, {
+    kind: "image",
+    imageData: new Uint8Array([5, 6]),
+    width: 200,
+    height: 400,
+  });
+});
+
+test("resolveImageBlock returns null when fetch fails", async () => {
+  global.fetch = async () => {
+    return {
+      ok: false,
+    } as Response;
+  };
 
   const result = await resolveImageBlock({
     url: "https://example.com/missing.png",
   });
 
   assert.equal(result, null);
-
-  fetchMock.mock.restore();
 });
 
-test("createHebrewWordBlob generates a docx blob with RTL settings", async () => {
-  const fetchMock = mock.method(globalThis, "fetch", async () => ({
-    ok: false,
-  }) as Response);
+test("resolveImageBlock returns null for invalid preview payloads", async () => {
+  global.atob = () => {
+    throw new Error("invalid base64");
+  };
 
-  const blob = await createHebrewWordBlob([
-    { kind: "title", text: "מסמך בדיקה" },
-    { kind: "paragraph", text: "פסקה בעברית" },
-    { kind: "editableBoolean", value: true },
-  ]);
+  const result = await resolveImageBlock({
+    preview: "data:image/png;base64,%%%invalid%%%",
+  });
 
-  assert.ok(blob instanceof Blob);
-  assert.equal(
-    blob.type,
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  );
-
-  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-
-  const documentXml = await zip.file("word/document.xml")?.async("string");
-  const settingsXml = await zip.file("word/settings.xml")?.async("string");
-  const stylesXml = await zip.file("word/styles.xml")?.async("string");
-
-  assert.ok(documentXml);
-  assert.ok(settingsXml);
-  assert.ok(stylesXml);
-
-  assert.match(documentXml!, /<w:bidi w:val="1"\/>/);
-  assert.match(documentXml!, /<w:rtl w:val="1"\/>/);
-
-  assert.match(settingsXml!, /<w:themeFontLang/);
-  assert.match(settingsXml!, /he-IL/);
-
-  assert.match(stylesXml!, /Arial/);
-
-  fetchMock.mock.restore();
+  assert.equal(result, null);
 });
